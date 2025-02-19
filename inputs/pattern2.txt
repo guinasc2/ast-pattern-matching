@@ -1,0 +1,31 @@
+pattern sum : E := #e1:E "+" #e2:E
+
+pattern reference : E := @sum "+" #e3:E
+
+pattern reference2 : E := @sum "*" #e3:E
+
+pattern mult : E := #e1:E "*" #e2:E
+
+pattern aninhado : E := (E := #e3:E "+" #e1:E) "+" #e2:E
+
+pattern aninhado2 : E := (E := (E := #n1:"num") "+" #e1:E) "+" #e2:E
+
+pattern aninhado3 : E := (E := #n1:"num" "+" #e1:E) "+" #e2:E
+
+pattern aninhado4 : E := (E := #n1:"inutil" "+" #e1:E) "+" #e2:E
+
+pattern aninhado5 : E := (E := #n1:"inexistente" "+" #e1:E) "+" #e2:E
+
+pattern var : E := #n1:"num" "+" #e2:E
+
+pattern var2 : E := #e1:"alcanca" "+" #e2:E
+
+pattern ntS : S := #e1:"alcanca"
+
+pattern reference3 : E := (E := @ntS) "+" #e2:E
+
+pattern reference6 : E := @reference4 "+" #e0:E
+
+pattern reference4 : E := @ntS "+" #e2:E
+
+pattern reference5 : E := @ntS "+" @fahdash

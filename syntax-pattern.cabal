@@ -9,9 +9,9 @@ version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/syntax-pattern#readme>
 homepage:       https://github.com/githubuser/syntax-pattern#readme
 bug-reports:    https://github.com/githubuser/syntax-pattern/issues
-author:         Author name here
+author:         Guilherme Drummond
 maintainer:     example@example.com
-copyright:      2025 Author name here
+copyright:      2025 Guilherme Drummond
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
@@ -25,9 +25,15 @@ source-repository head
 
 library
   exposed-modules:
-      Expr
-      ExprParser
-      Lib
+      Syntax.Base
+      Syntax.Grammar
+      Syntax.Peg
+      Syntax.Pattern
+      
+      Parser.Base
+      Parser.Grammar
+      Parser.Peg
+      Parser.Pattern
   other-modules:
       Paths_syntax_pattern
   autogen-modules:
@@ -40,6 +46,10 @@ library
     , hspec
     , megaparsec
     , parser-combinators
+    , algebraic-graphs
+    , mtl
+    , containers
+    , pretty
   default-language: Haskell2010
 
 executable syntax-pattern-exe
@@ -71,11 +81,13 @@ test-suite syntax-pattern-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
+    , syntax-pattern
+    , megaparsec
     , base >=4.7 && <5
     , hspec
-    , megaparsec
-    , parser-combinators
-    , syntax-pattern
     , tasty
     , tasty-quickcheck
+    , tasty-hspec
+    , HUnit
+    , tasty-hunit
   default-language: Haskell2010

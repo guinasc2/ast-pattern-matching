@@ -24,6 +24,8 @@ dependencies:
 - megaparsec
 - hspec
 - parser-combinators
+# - invertible-syntax
+# - grammar-combinators
 
 
 ghc-options:

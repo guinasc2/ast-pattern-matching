@@ -1,0 +1,13 @@
+pattern ntS : S := #e1:"alcanca"
+
+pattern reference1 : E := @reference2 "+" #e0:E
+
+pattern reference2 : E := (E := @ntS) "+" #e2:E
+
+pattern reference3 : E := (E := @ntS) "+" #e2:E
+
+pattern reference4 : E := @reference2 "+" (E := @ntS)
+
+pattern reference5 : E := @ntS "+" #e2:E
+
+pattern falho : E := @aaaaaa "+" #e2:E

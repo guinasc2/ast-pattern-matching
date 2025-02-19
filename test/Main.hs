@@ -1,100 +1,51 @@
 module Main where
 
-import Expr
+import Syntax.Base
+import Syntax.Peg
+import Parser.Base
+import Parser.Peg
+
+import Text.Megaparsec
+
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.QuickCheck.Test (quickCheck)
+import Test.Tasty.HUnit
 
 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = defaultMain tests
 
--- Exp generator
+parseT :: Parsec e s a -> s -> a
+parseT p f = case parse p "" f of
+                    Right a -> a
+                    Left _ -> error ""
 
-genChar :: Gen Char
-genChar = elements ['a'..'z']
-
-genVar :: Gen Exp
-genVar = 
-    do
-        namesize <- choose (1, 3)
-        v <- vectorOf namesize genChar
-        return (Var v)
-
-genNum :: Gen Exp
-genNum = 
-    do
-        n <- choose (1, 100)
-        return (Num n)
-
-genAdd :: Int -> Gen Exp
-genAdd n =
-    do
-        e1 <- genExp (n-1)
-        e2 <- genExp (n-1)
-        return (Add e1 e2)
-
-genMul :: Int -> Gen Exp
-genMul n =
-    do
-        e1 <- genExp (n-1)
-        e2 <- genExp (n-1)
-        return (Mul e1 e2)
-
-genExp :: Int -> Gen Exp
-genExp 0 = frequency [(50, genNum), (50, genVar)]
-genExp n = frequency [(25, genNum), (25, genVar), (25, genAdd n), (25, genMul n)]
-
-genExp' :: Gen Exp
-genExp' =
-    do
-        n <- choose (3, 7)
-        genExp n
-
-
--- Pat generator
-
-
-genPVar :: Gen Pat
-genPVar = 
-    do
-        namesize <- choose (1, 3)
-        v <- vectorOf namesize genChar
-        return (PVar v)
-
-genMetaVar :: Gen Pat
-genMetaVar = 
-    do
-        namesize <- choose (1, 2)
-        v <- vectorOf namesize genChar
-        return (PVar ("#M" ++ v))
-
-genPNum :: Gen Pat
-genPNum = 
-    do
-        n <- choose (1, 100)
-        return (PNum n)
-
-genPAdd :: Int -> Gen Pat
-genPAdd n =
-    do
-        e1 <- genPat (n-1)
-        e2 <- genPat (n-1)
-        return (PAdd e1 e2)
-
-genPMul :: Int -> Gen Pat
-genPMul n =
-    do
-        e1 <- genPat (n-1)
-        e2 <- genPat (n-1)
-        return (PMul e1 e2)
-
-genPat :: Int -> Gen Pat
-genPat 0 = frequency [(33, genPNum), (33, genPVar), (33, genMetaVar)]
-genPat n = frequency [(25, genPNum), (25, genPVar), (25, genPAdd n), (25, genPMul n)]
-
-genPat' :: Gen Pat
-genPat' =
-    do
-        n <- choose (1, 5)
-        genPat n
+tests :: TestTree
+tests = testGroup "Tests"
+  [ 
+    testCase "peg simples, uma única regra" $
+        parseT grammar "A <- \"a\"+" 
+        @?= 
+        ([(NT "A",Sequence (ExprT (T "a")) (Star (ExprT (T "a"))))],NT "A")
+  
+  , testCase "peg para expressões, com NT para número" $
+        parseT grammar "E <- T (\"\\\"\" T)*\nT <- F (\"*\" F)*\nF <- \"num\" / \"(\" E \")\""
+        @?=
+        ([(NT "E",Sequence (ExprNT (NT "T")) (Star (Sequence (ExprT (T "\"")) (ExprNT (NT "T"))))),(NT "T",Sequence (ExprNT (NT "F")) (Star (Sequence (ExprT (T "*")) (ExprNT (NT "F"))))),(NT "F",Choice (ExprT (T "num")) (Sequence (Sequence (ExprT (T "(")) (ExprNT (NT "E"))) (ExprT (T ")"))))],NT "E")
+      
+    , testCase "peg para expressões, com range para número" $
+        parseT grammar "E <- T (\"+\" T)*\nT <- F (\"*\" F)*\nF <- [0-9]+ / \"(\" E \")\"" 
+        @?= 
+        ([
+            (NT "E",Sequence (ExprNT (NT "T")) (Star (Sequence (ExprT (T "+")) (ExprNT (NT "T"))))),
+            (NT "T",Sequence (ExprNT (NT "F")) (Star (Sequence (ExprT (T "*")) (ExprNT (NT "F"))))),
+            (NT "F",
+                Choice 
+                    (Sequence 
+                        (Choice (Choice (Choice (Choice (Choice (Choice (Choice (Choice (Choice (ExprT (T "0")) (ExprT (T "1"))) (ExprT (T "2"))) (ExprT (T "3"))) (ExprT (T "4"))) (ExprT (T "5"))) (ExprT (T "6"))) (ExprT (T "7"))) (ExprT (T "8"))) (ExprT (T "9")))
+                        (Star (Choice (Choice (Choice (Choice (Choice (Choice (Choice (Choice (Choice (ExprT (T "0")) (ExprT (T "1"))) (ExprT (T "2"))) (ExprT (T "3"))) (ExprT (T "4"))) (ExprT (T "5"))) (ExprT (T "6"))) (ExprT (T "7"))) (ExprT (T "8"))) (ExprT (T "9")))))
+                    (Sequence 
+                        (Sequence (ExprT (T "(")) (ExprNT (NT "E"))) 
+                        (ExprT (T ")"))))],NT "E")
+  ]

@@ -1,0 +1,13 @@
+num : digit digit digit;
+var : identifier;
+
+%%
+
+E -> E "+" E;
+E -> E "*" E;
+E -> "num";
+E -> "var";
+E -> "(" E ")";
+T -> "inutil";
+E -> S;
+S -> "alcanca";

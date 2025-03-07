@@ -1,69 +1,107 @@
-{-# LANGUAGE TupleSections #-}
-
 module Parser.Pattern where
 
-import Syntax.Base
-import Syntax.Grammar
-import Syntax.Pattern
-
+import Syntax.Base (Pretty(pPrint))
+import Syntax.Pattern -- (NamedSynPat, SyntaxPattern(..), processPats)
 import Parser.Base
-import Parser.Grammar
-
+    (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, pSymbol, parseFromFile, parseFromFilePretty)
+import Parser.Peg (grammar)
 import Text.Megaparsec
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as Lexer
+    (eof, (<?>), choice, some, parse, errorBundlePretty)
+import Text.Megaparsec.Char (char)
+import Control.Monad.Combinators.Expr
+    (Operator(Postfix, Prefix), makeExprParser)
 
 
 -------------------------------------------------------------------------------
--- SyntaxPattern Parser
+--- SyntaxPattern Parser
 
-pPat :: Parser NamedSynPat
-pPat = f <$> symbol "pattern" <*> identifier <*> symbol ":" <*> choice [pNonTerminal, pTerminal, pVar] <?> "pattern"
+-- TODO: não tem um parser para SynChoice ainda
+
+patterns :: Parser [NamedSynPat]
+patterns = id <$ hsc <*> some pat <* eof
+
+pat :: Parser NamedSynPat
+pat =
+    f <$> symbol "pattern"
+        <*> identifier
+        <*> symbol ":"
+        <*> patNT
+        <* sc
+        <?> "pattern"
     where
         f _ name _ p = (name, p)
 
-pPat' :: Parser SyntaxPat
-pPat' = choice [parens pNonTerminal, pTerminal, pVar, pRef]
+primary :: Parser SyntaxPattern
+primary = choice [
+                parens Parser.Pattern.sequence
+            ,   parens patNT
+            ,   patT
+            ,   patVar
+            ,   patRef
+            ,   patEpsilon
+            ]
 
-pNonTerminal :: Parser SyntaxPat
-pNonTerminal = f <$> nonTerminal <*> symbol ":=" <*> many pPat'
-    where f nt _ ps = SynNT nt ps
+sequence :: Parser SyntaxPattern
+sequence = foldr1 (curry SynSeq) <$> some prefix
 
-pTerminal :: Parser SyntaxPat
-pTerminal = SynT <$> terminal
+patNT :: Parser SyntaxPattern
+patNT = f <$> nonTerminal <*> symbol ":=" <*> Parser.Pattern.sequence
+    where f nt _ = SynNT nt
 
-pVar :: Parser SyntaxPat
-pVar = f <$> char '#' <*> identifier <*> char ':' <*> pSymbol <?> "meta variable"
+patT :: Parser SyntaxPattern
+patT = SynT <$> terminal
+
+patVar :: Parser SyntaxPattern
+patVar = f <$> char '#' <*> identifier <*> char ':' <*> pSymbol <?> "meta variable"
     where
         f _ n _ s = SynVar s n
 
-pRef :: Parser SyntaxPat
-pRef = f <$> char '@' <*> identifier <?> "pattern name"
+patRef :: Parser SyntaxPattern
+patRef = f <$> char '@' <*> identifier <?> "pattern name"
     where
-        f _ n = SynRef n
+        f _ = SynRef
 
--------------------------------------------------------------------------------
--- File Parser
+patEpsilon :: Parser SyntaxPattern
+patEpsilon = SynEpsilon <$ symbol "ε"
 
-patternFile :: Parser [NamedSynPat]
-patternFile = some pPat <* eof
+prefix :: Parser SyntaxPattern
+prefix = makeExprParser primary patOperatorTable
+
+patOperatorTable :: [[Operator Parser SyntaxPattern]]
+patOperatorTable =
+    [
+        [
+            patSuffix "*" SynStar,
+            patSuffix "+" plus --,
+            -- patSuffix "?" question
+        ],
+        [
+            patPrefix "!" SynNot,
+            patPrefix "&" (SynNot . SynNot)
+        ]
+    ]
+    where
+        plus e = SynSeq (e, SynStar e)
+        -- question e = PatChoice e Empty -- Seria PatChoice, mas ele só recebe um parâmetro
+
+
+patSuffix, patPrefix :: String -> (SyntaxPattern -> SyntaxPattern) -> Operator Parser SyntaxPattern
+patSuffix name f = Postfix (f <$ symbol name)
+patPrefix name f = Prefix (f <$ symbol name)
 
 -------------------------------------------------------------------------------
 --- Testes
 
 parsePat :: FilePath -> IO ()
-parsePat f = do
-        contents <- readFile f
-        case parse (many pPat) "" contents of
-            Left bundle -> putStr (errorBundlePretty bundle)
-            Right xs -> putStr (concatMap g xs)
-                where
-                    g (i, p) = "pattern " ++ i ++ " : " ++ showP' p ++ "\n"
+parsePat = parseFromFile patterns
+
+parsePatPretty :: FilePath -> IO ()
+parsePatPretty = parseFromFilePretty patterns
 
 parsePatApply :: Show a => ([NamedSynPat] -> a) -> FilePath -> IO ()
 parsePatApply g f = do
         contents <- readFile f
-        case parse (many pPat) "" contents of
+        case parse patterns "" contents of
             Left bundle -> putStr (errorBundlePretty bundle)
             Right xs -> print (g xs)
 
@@ -71,19 +109,17 @@ validPatFile :: FilePath -> FilePath -> IO ()
 validPatFile pathGrammar pathPattern = do
     contents_g <- readFile pathGrammar
     contents_p <- readFile pathPattern
-    case parse grammarFile "" contents_g of
+    case parse grammar "" contents_g of
         Left bundle -> putStr (errorBundlePretty bundle)
-        Right (rs, g) ->
-            case parse patternFile "" contents_p of
+        Right g@(rs, _) ->
+            case parse patterns "" contents_p of
                 Left bundle -> putStr (errorBundlePretty bundle)
-                Right ps -> 
+                Right ps ->
                     case processPats g ps of
-                        Left bundle -> print bundle
+                        Left bundle -> do
+                            print bundle
                         Right ps' -> do
-                            print rs
-                            putStrLn (showG g)
-                            putStrLn (concatMap printNamedSyn ps)
-                            putStrLn (concatMap printNamedPat ps')
-    where
-        printNamedSyn (i, p) = "pattern " ++ i ++ " : " ++ showP' p ++ "\n"
-        printNamedPat (i, p) = "pattern " ++ i ++ " : " ++ showP p ++ "\n"
+                            -- print rs
+                            putStr . show $ pPrint g
+                            putStr . show $ pPrint ps
+                            putStr . show $ pPrint ps'

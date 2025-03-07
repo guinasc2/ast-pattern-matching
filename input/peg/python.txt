@@ -1,0 +1,55 @@
+file <- statement+
+statement <- compound_stmt / simple_stmt
+
+simple_stmt <- simple NEWLINE
+compound_stmt <- function_def / if_stmt / for_stmt / while_stmt
+
+simple <- assignment / return_stmt / import_stmt / "break" / "continue" 
+
+assignment <- NAME attr SPACE expression
+attr <- "=" / "+=" / "-=" / "*=" / "/="
+
+return_stmt <- "return" expression
+import_stmt <- "import" NAME
+
+function_def <- "def" NAME "(" arguments? ")" ":" NEWLINE block
+block <- (INDENT statement)+
+
+if_stmt <- "if" expression ":" NEWLINE block elif_stmt? / "if" expression ":" NEWLINE block else_block?
+elif_stmt <- "elif" expression ":" NEWLINE block elif_stmt? / "elif" expression ":" NEWLINE block else_block?
+else_block <- "else" ":" NEWLINE block
+
+for_stmt <- "for" NAME "in" expression ":" NEWLINE block
+while_stmt <- "while" expression ":" NEWLINE block
+
+primary <- NAME / NAME "(" arguments? ")" / atom
+
+arguments <- expression ("," expression)*
+
+atom <- "True" / "False"  / "None"  / strings / NUMBER
+
+expression <- term (op3 term)*
+term <- factor (op2 factor)*
+factor <- primary SPACE / "(" expression ")"
+
+op3 <- "+" / "-"
+op2 <- "*" / "/"
+op1 <- "**"
+
+NAME <- identifier ("." identifier)* SPACE
+identifier <- varStart varEnd
+varStart <- [a-zA-Z]
+varEnd <- [a-zA-Z_0-9]*
+
+NUMBER <- INTEGER / DECIMAL
+INTEGER <- [1-9] [0-9]*
+DECIMAL <- INTEGER "." [0-9]+
+
+strings <- (fstring / string)+ 
+string <- ["] (!["] Char)* ["] / ['] (!['] Char)* [']
+fstring <- "f" string
+Char <- [a-zA-Z!#$%&'()*+,-./0-9:;<=>?@^_{|}]*
+
+NEWLINE <- "\n" / "\r" / "\r\n"
+INDENT <- "\t"+ / SPACE
+SPACE <- " "*

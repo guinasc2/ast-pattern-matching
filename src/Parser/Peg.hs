@@ -1,95 +1,67 @@
 module Parser.Peg where
 
-import Syntax.Base
+import Syntax.Base (NonTerminal(NT), Terminal(..), pPrint)
 import Syntax.Peg
+    (Grammar, Definition, Expression(..), processPeg)
 import Parser.Base
-
-import Data.Void ( Void )
+    (Parser, sc, symbol, parens, nonTerminal, terminal, parseFromFile, parseFromFilePretty, hsc, brackets)
 import Text.Megaparsec
-import Text.Megaparsec.Char
+    (eof, choice, some, errorBundlePretty, sepBy1, parse, someTill, MonadParsec (try))
+import Text.Megaparsec.Char (alphaNumChar, char)
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 import Control.Monad.Combinators.Expr
+    (Operator(Postfix, Prefix), makeExprParser)
 
-
-sc' :: Parser ()
-sc' = Lexer.space space1 lineComment empty
-
-hsc' :: Parser ()
-hsc' = Lexer.space hspace1 lineComment empty
-
-lineComment :: Parser ()
-lineComment = () <$ Lexer.skipLineComment "#" <* eol
-
-lexeme' :: Parser a -> Parser a
-lexeme' = Lexer.lexeme hsc'
-
-symbol' :: String -> Parser String
-symbol' = Lexer.symbol hsc'
-
-parens' :: Parser a -> Parser a
-parens' = between (symbol' "(") (symbol' ")")
-
-identifier' :: Parser String
-identifier' = lexeme' ((:) <$> letterChar <*> many (alphaNumChar <|> char '_') <?> "identifier'")
-
-litString' :: Parser String
-litString' = lexeme' (char '"' >> manyTill Lexer.charLiteral (char '"') <?> "string")
-            <|> lexeme' (char '\'' >> manyTill Lexer.charLiteral (char '\'') <?> "string")
 
 -------------------------------------------------------------------------------
--- PEG parser
-
-nonTerminal' :: Parser NonTerminal
-nonTerminal' =
-    NT <$> identifier' <?> "nonTerminal'"
-
-terminal' :: Parser Terminal
-terminal' = T <$> litString' <?> "terminal'"
+--- PEG parser
 
 grammar :: Parser Grammar
-grammar = f <$> hsc' <*> some definition <* eof
+grammar = f <$> sc <*> some definition <* eof
     where
         f _ d = (d, fst $ head d)
 
 definition :: Parser Definition
-definition = f <$> nonTerminal' <*> symbol' "<-" <*> pChoice <* sc'
+definition = f <$> nonTerminal <*> symbol "<-" <*> Parser.Peg.expression <* sc
     where
         f nt _ e = (nt, e)
 
-pChoice :: Parser Expression
-pChoice = foldr1 Choice <$> Parser.Peg.sequence `sepBy1` symbol' "/"
+expression :: Parser Expression
+expression = foldr1 Choice <$> Parser.Peg.sequence `sepBy1` symbol "/"
 
 sequence :: Parser Expression
-sequence = foldr1 Sequence <$> some expression
+sequence = foldr1 Sequence <$> some prefix
 
 primary :: Parser Expression
 primary = choice [
-                ExprNT <$> nonTerminal',
-                parens' pChoice,
-                ExprT <$> terminal',
+                epsilon,
+                ExprNT <$> nonTerminal,
+                parens Parser.Peg.expression,
+                ExprT <$> terminal,
                 pClass,
                 dot
             ]
 
 pClass :: Parser Expression
-pClass = foldl1 Choice <$> (char '[' >> manyTill range (char ']'))
+pClass = foldr1 Choice <$> (char '[' >> someTill range (char ']')) <* hsc
 
 range :: Parser Expression
 range = choice [
-            -- f <$> letterChar <*> char '-' <*> letterChar,
-            -- f <$> digitChar <*> char '-' <*> digitChar,
-            f <$> alphaNumChar <*> char '-' <*> alphaNumChar,
+            try $ f <$> alphaNumChar <*> char '-' <*> alphaNumChar,
             expr <$> Lexer.charLiteral
         ]
         where
-            f a _ b = foldl1 Choice $ map expr [a..b]
+            f a _ b = foldr1 Choice $ map expr [a..b]
             expr = ExprT . T . (:[])
 
 dot :: Parser Expression
 dot = ExprNT (NT "") <$ symbol "."
 
-expression :: Parser Expression
-expression = makeExprParser primary pegOperatorTable
+epsilon :: Parser Expression
+epsilon = Empty <$ symbol "ε"
+
+prefix :: Parser Expression
+prefix = makeExprParser primary pegOperatorTable
 
 pegOperatorTable :: [[Operator Parser Expression]]
 pegOperatorTable =
@@ -109,8 +81,25 @@ pegOperatorTable =
         question e = Choice e Empty
 
 pegSuffix, pegPrefix :: String -> (Expression -> Expression) -> Operator Parser Expression
-pegSuffix name f = Postfix (f <$ symbol' name)
-pegPrefix name f = Postfix (f <$ symbol' name)
+pegSuffix name f = Postfix (f <$ symbol name)
+pegPrefix name f = Prefix (f <$ symbol name)
 
-pegBinary :: String -> (Expression -> Expression -> Expression) -> Operator Parser Expression
-pegBinary name f = InfixL (f <$ symbol' name)
+
+-------------------------------------------------------------------------------
+--- Testes
+
+parseGrammar :: FilePath -> IO ()
+parseGrammar = parseFromFile grammar
+
+parseGrammarPretty :: FilePath -> IO ()
+parseGrammarPretty = parseFromFilePretty grammar
+
+parseGrammar' :: FilePath -> IO ()
+parseGrammar' f = do
+        contents <- readFile f
+        case parse grammar "" contents of
+            Left bundle -> putStr (errorBundlePretty bundle)
+            Right g ->
+                case processPeg g of
+                    Left bundle -> print bundle
+                    Right g' -> putStr . show $ pPrint g'

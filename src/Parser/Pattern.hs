@@ -6,16 +6,15 @@ import Parser.Base
     (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, pSymbol, parseFromFile, parseFromFilePretty)
 import Parser.Peg (grammar)
 import Text.Megaparsec
-    (eof, (<?>), choice, some, parse, errorBundlePretty)
+    (eof, (<?>), choice, some, parse, errorBundlePretty, sepBy1)
 import Text.Megaparsec.Char (char)
 import Control.Monad.Combinators.Expr
     (Operator(Postfix, Prefix), makeExprParser)
+import Data.Maybe (catMaybes)
 
 
 -------------------------------------------------------------------------------
 --- SyntaxPattern Parser
-
--- TODO: não tem um parser para SynChoice ainda
 
 patterns :: Parser [NamedSynPat]
 patterns = id <$ hsc <*> some pat <* eof
@@ -33,36 +32,39 @@ pat =
 
 primary :: Parser SyntaxPattern
 primary = choice [
-                parens Parser.Pattern.sequence
+                parens expression
             ,   parens patNT
             ,   patT
-            ,   patVar
-            ,   patRef
-            ,   patEpsilon
+            ,   metaVariable
+            ,   reference
+            ,   epsilon
             ]
 
+expression :: Parser SyntaxPattern
+expression = foldr1 SynChoice <$> Parser.Pattern.sequence `sepBy1` symbol "/"
+
 sequence :: Parser SyntaxPattern
-sequence = foldr1 (curry SynSeq) <$> some prefix
+sequence = foldr1 SynSeq <$> some prefix
 
 patNT :: Parser SyntaxPattern
-patNT = f <$> nonTerminal <*> symbol ":=" <*> Parser.Pattern.sequence
+patNT = f <$> nonTerminal <*> symbol ":=" <*> expression
     where f nt _ = SynNT nt
 
 patT :: Parser SyntaxPattern
 patT = SynT <$> terminal
 
-patVar :: Parser SyntaxPattern
-patVar = f <$> char '#' <*> identifier <*> char ':' <*> pSymbol <?> "meta variable"
+metaVariable :: Parser SyntaxPattern
+metaVariable = f <$> char '#' <*> identifier <*> char ':' <*> pSymbol <?> "meta variable"
     where
         f _ n _ s = SynVar s n
 
-patRef :: Parser SyntaxPattern
-patRef = f <$> char '@' <*> identifier <?> "pattern name"
+reference :: Parser SyntaxPattern
+reference = f <$> char '@' <*> identifier <?> "pattern name"
     where
         f _ = SynRef
 
-patEpsilon :: Parser SyntaxPattern
-patEpsilon = SynEpsilon <$ symbol "ε"
+epsilon :: Parser SyntaxPattern
+epsilon = SynEpsilon <$ symbol "ε"
 
 prefix :: Parser SyntaxPattern
 prefix = makeExprParser primary patOperatorTable
@@ -72,8 +74,8 @@ patOperatorTable =
     [
         [
             patSuffix "*" SynStar,
-            patSuffix "+" plus --,
-            -- patSuffix "?" question
+            patSuffix "+" plus,
+            patSuffix "?" question
         ],
         [
             patPrefix "!" SynNot,
@@ -81,8 +83,8 @@ patOperatorTable =
         ]
     ]
     where
-        plus e = SynSeq (e, SynStar e)
-        -- question e = PatChoice e Empty -- Seria PatChoice, mas ele só recebe um parâmetro
+        plus e = SynSeq e (SynStar e)
+        question e = SynChoice e SynEpsilon
 
 
 patSuffix, patPrefix :: String -> (SyntaxPattern -> SyntaxPattern) -> Operator Parser SyntaxPattern
@@ -116,10 +118,13 @@ validPatFile pathGrammar pathPattern = do
                 Left bundle -> putStr (errorBundlePretty bundle)
                 Right ps ->
                     case processPats g ps of
-                        Left bundle -> do
-                            print bundle
+                        Left bundle -> print bundle
                         Right ps' -> do
-                            -- print rs
+                            let proofs = map (validPat' g . snd) ps'
+                            let corrected = zipWith correctPat (map snd ps') (catMaybes proofs)
+                            -- print (map snd ps')
+                            -- print (catMaybes proofs)
+                            -- print corrected
                             putStr . show $ pPrint g
                             putStr . show $ pPrint ps
                             putStr . show $ pPrint ps'

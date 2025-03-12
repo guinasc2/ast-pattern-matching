@@ -37,3 +37,7 @@ instance Pretty Symbol where
     pPrint :: Symbol -> Doc
     pPrint (Left nt) = pPrint nt
     pPrint (Right t) = pPrint t
+
+toMaybe :: Bool -> a -> Maybe a
+toMaybe False _ = Nothing
+toMaybe True a = Just a

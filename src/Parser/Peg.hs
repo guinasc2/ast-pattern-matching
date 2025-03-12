@@ -6,7 +6,7 @@ import Syntax.Peg
 import Parser.Base
     (Parser, sc, symbol, parens, nonTerminal, terminal, parseFromFile, parseFromFilePretty, hsc, brackets)
 import Text.Megaparsec
-    (eof, choice, some, errorBundlePretty, sepBy1, parse, someTill, MonadParsec (try))
+    (eof, choice, some, errorBundlePretty, sepBy1, parse, someTill, try, optional)
 import Text.Megaparsec.Char (alphaNumChar, char)
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 import Control.Monad.Combinators.Expr
@@ -22,7 +22,7 @@ grammar = f <$> sc <*> some definition <* eof
         f _ d = (d, fst $ head d)
 
 definition :: Parser Definition
-definition = f <$> nonTerminal <*> symbol "<-" <*> Parser.Peg.expression <* sc
+definition = f <$> nonTerminal <*> symbol "<-" <*> expression <* sc
     where
         f nt _ e = (nt, e)
 
@@ -36,7 +36,7 @@ primary :: Parser Expression
 primary = choice [
                 epsilon,
                 ExprNT <$> nonTerminal,
-                parens Parser.Peg.expression,
+                parens expression,
                 ExprT <$> terminal,
                 pClass,
                 dot

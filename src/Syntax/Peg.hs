@@ -24,15 +24,10 @@ data Expression
     | Not Expression
     deriving (Show, Eq, Ord)
 {-
-TODO: Fazer algo para eof e indentação
-Rodrigo deu a ideia do eof ser o último símbolo da expressão inicial
-    EOF ser o último símbolo é fácil de fazer
-    Mas ao tentar gerar um parser de EOF com o megaparsec, 
-        ele reclamou do tipo das coisas
-        Outra opção pro EOF seria eu simplesmente inserir um eof depos da expressão inicial
-        Assim, fica implícito que vai consumir tudo até o fim do arquivo
-    Não tentei fazer de indentação, pq pareceu que tb daria problema de tipo
-        ou precisaria de mais informação na PEG (por causa do tipo do parser de indentação)
+TODO: Fazer algo para indentação
+    Se for considerar EOF como um não terminal, provavelmente 
+    precisa alterar o código de ordenação topológica pra tratar o EOF
+    Por enquanto, tá com a ideia de que o EOF é implícito
 -}
 type Definition = (NonTerminal, Expression)
 
@@ -163,6 +158,7 @@ starNullable g (nt, ExprNT nt') = if nt == nt'
                                     else starNullable g (nt', fromJust $ expression g nt')
 starNullable g (nt, Sequence e1 e2) = case starNullable g (nt, e1) of
                                         Nothing -> Nothing
+                                        -- TODO: Talvez seja necessário fazer algo com o valor desse Just
                                         Just _ -> starNullable g (nt, e2)
 starNullable g (nt, Choice e1 e2) =
     f $

@@ -1,1 +1,1 @@
-pattern sum : E := #e1:T ("+" #e0:T)*
+pattern sum : E := #e1:T #e2:A

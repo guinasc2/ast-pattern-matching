@@ -1,16 +1,14 @@
-module Parser.Pattern where
+module Parser.Pattern 
+    ( patterns
+    , parsePatterns
+    ) where
 
-import Syntax.Base (Pretty(pPrint))
-import Syntax.Pattern -- (NamedSynPat, SyntaxPattern(..), processPats)
+import Syntax.Pattern (SyntaxPattern(..), NamedSynPat)
 import Parser.Base
-    (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, pSymbol, parseFromFile, parseFromFilePretty)
-import Parser.Peg (grammar)
-import Text.Megaparsec
-    (eof, (<?>), choice, some, parse, errorBundlePretty, sepBy1)
+    (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, pSymbol, parseWith, ParseError)
+import Text.Megaparsec (eof, (<?>), choice, some, sepBy1)
 import Text.Megaparsec.Char (char)
-import Control.Monad.Combinators.Expr
-    (Operator(Postfix, Prefix), makeExprParser)
-import Data.Maybe (catMaybes)
+import Control.Monad.Combinators.Expr (Operator(Postfix, Prefix), makeExprParser)
 
 
 -------------------------------------------------------------------------------
@@ -31,13 +29,13 @@ pat =
         f _ name _ p = (name, p)
 
 primary :: Parser SyntaxPattern
-primary = choice [
-                parens expression
-            ,   parens patNT
-            ,   patT
-            ,   metaVariable
-            ,   reference
-            ,   epsilon
+primary = choice 
+            [ parens expression
+            , parens patNT
+            , patT
+            , metaVariable
+            , reference
+            , epsilon
             ]
 
 expression :: Parser SyntaxPattern
@@ -91,40 +89,5 @@ patSuffix, patPrefix :: String -> (SyntaxPattern -> SyntaxPattern) -> Operator P
 patSuffix name f = Postfix (f <$ symbol name)
 patPrefix name f = Prefix (f <$ symbol name)
 
--------------------------------------------------------------------------------
---- Testes
-
-parsePat :: FilePath -> IO ()
-parsePat = parseFromFile patterns
-
-parsePatPretty :: FilePath -> IO ()
-parsePatPretty = parseFromFilePretty patterns
-
-parsePatApply :: Show a => ([NamedSynPat] -> a) -> FilePath -> IO ()
-parsePatApply g f = do
-        contents <- readFile f
-        case parse patterns "" contents of
-            Left bundle -> putStr (errorBundlePretty bundle)
-            Right xs -> print (g xs)
-
-validPatFile :: FilePath -> FilePath -> IO ()
-validPatFile pathGrammar pathPattern = do
-    contents_g <- readFile pathGrammar
-    contents_p <- readFile pathPattern
-    case parse grammar "" contents_g of
-        Left bundle -> putStr (errorBundlePretty bundle)
-        Right g@(rs, _) ->
-            case parse patterns "" contents_p of
-                Left bundle -> putStr (errorBundlePretty bundle)
-                Right ps ->
-                    case processPats g ps of
-                        Left bundle -> print bundle
-                        Right ps' -> do
-                            let proofs = map (validPat' g . snd) ps'
-                            let corrected = zipWith correctPat (map snd ps') (catMaybes proofs)
-                            -- print (map snd ps')
-                            -- print (catMaybes proofs)
-                            -- print corrected
-                            putStr . show $ pPrint g
-                            putStr . show $ pPrint ps
-                            putStr . show $ pPrint ps'
+parsePatterns :: String -> Either ParseError [NamedSynPat]
+parsePatterns = parseWith patterns

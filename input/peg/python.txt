@@ -46,7 +46,7 @@ INTEGER <- [1-9] [0-9]*
 DECIMAL <- INTEGER "." [0-9]+
 
 strings <- (fstring / string)+ 
-string <- ["] (!["] Char)* ["] / ['] (!['] Char)* [']
+string <- ["] (!["] .)* ["] / ['] (!['] .)* [']
 fstring <- "f" string
 Char <- [a-zA-Z!#$%&'()*+,-./0-9:;<=>?@^_{|}]*
 

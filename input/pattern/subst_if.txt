@@ -1,0 +1,15 @@
+pattern if_def : if_stmt := "if" @space @orExpression ":" @space #b1:block @elseExpression
+
+pattern subst  : if_stmt := "if" @space #e1:expression ":" @space #b2:block @elseExpression2
+
+pattern orExpression : expression := @andExpression ("or" @space #d2:or_expr)* @newline?
+pattern andExpression : or_expr := @notExpression ("and" @space #d1:and_expr)*
+pattern notExpression : and_expr := "not" @space #e1:and_expr
+
+pattern elseExpression  : else_block := "else" @space ":" @space #b2:block
+
+
+pattern elseExpression2 : else_block := "else" @space ":" @space #b1:block
+
+pattern space : space := " "*
+pattern newline : newline := "\n"

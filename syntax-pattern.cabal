@@ -25,15 +25,24 @@ source-repository head
 
 library
   exposed-modules:
+      -- Syntax
       Syntax.Base
       Syntax.Peg
       Syntax.Pattern
       Syntax.ParsedTree
-      
+      -- Parser
       Parser.Base
       Parser.Peg
       Parser.Pattern
       Parser.ParsedTree
+      -- Semantic
+      Semantic.Peg
+      Semantic.Pattern
+      -- Semantic
+      Match.Capture
+      Match.Rewrite
+      -- Pipeline
+      Pipeline.MatchPipeline
   other-modules:
       Paths_syntax_pattern
   autogen-modules:
@@ -52,6 +61,11 @@ library
     , pretty
     , syb
   default-language: Haskell2010
+  default-extensions: 
+      TupleSections
+    , InstanceSigs
+    , FlexibleInstances
+    , DeriveDataTypeable
 
 executable syntax-pattern-exe
   main-is: Main.hs

@@ -1,13 +1,18 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
-module Syntax.Base where
+module Syntax.Base 
+    ( NonTerminal(..)
+    , Terminal(..)
+    , Symbol
+    , Pretty(..)
+    , toMaybe
+    , duplicatesOfFirst
+    , filterByFirst  
+    ) where
 
 import Text.PrettyPrint.HughesPJ (text, Doc, hcat)
-import Data.Generics
+import Data.Generics (Data, Typeable)
 
 data NonTerminal
     = NT String
@@ -31,7 +36,7 @@ instance Pretty NonTerminal where
 
 instance Pretty Terminal where
     pPrint :: Terminal -> Doc
-    pPrint (T t) = text ("\"" ++ t ++ "\"")
+    pPrint (T t) = text (show t)
 
 instance Pretty Symbol where
     pPrint :: Symbol -> Doc
@@ -41,3 +46,15 @@ instance Pretty Symbol where
 toMaybe :: Bool -> a -> Maybe a
 toMaybe False _ = Nothing
 toMaybe True a = Just a
+
+duplicatesOfFirst :: Eq a => [(a, b)] -> [a]
+duplicatesOfFirst ls = duplicates ls [] []
+    where
+        duplicates []     _       dups = dups
+        duplicates (x:xs) checked dups =
+            if fst x `elem` checked
+                then duplicates xs checked (fst x:dups)
+                else duplicates xs (fst x:checked) dups
+
+filterByFirst :: Eq a => [(a, b)] -> a -> [b]
+filterByFirst g' x = map snd $ filter ((x ==) . fst) g'

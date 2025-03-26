@@ -1,3 +1,16 @@
+{-|
+Module      : Syntax.ParsedTree
+Description : Representation of parsed trees.
+Copyright   : (c) Guilherme Drummond, 2025
+License     : MIT
+Maintainer  : guiadnguto@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+This module defines the structure of a parsed tree ('ParsedTree') and
+associated functions, such as the 'flatten' function to extract the terminals from a tree.
+It also provides an instance of the 'Pretty' class for formatted printing.
+-}
 module Syntax.ParsedTree 
     ( ParsedTree(..)
     , flatten
@@ -8,6 +21,21 @@ import Text.PrettyPrint.HughesPJ (text, Doc, (<+>), (<>), empty, lbrack, rbrack,
 import Prelude hiding ((<>))
 import Data.Generics (Data, Typeable, mkQ, everything)
 
+{-|
+Represents an abstract syntax tree (AST).
+
+A 'ParsedTree' can be:
+- 'ParsedEpsilon': Represents the empty tree (ε).
+- 'ParsedT': A terminal symbol.
+- 'ParsedNT': A non-terminal symbol associated with a subtree.
+- 'ParsedSeq': A sequence of two trees.
+- 'ParsedChoiceLeft': Represents the left choice in a choice operation.
+- 'ParsedChoiceRight': Represents the right choice in a choice operation.
+- 'ParsedStar': Represents a repetition of zero or more times of a tree.
+- 'ParsedNot': Represents the negation of a tree.
+
+@since 1.0.0
+-}
 data ParsedTree
     = ParsedEpsilon
     | ParsedT Terminal
@@ -19,10 +47,19 @@ data ParsedTree
     | ParsedNot
     deriving (Show, Typeable, Data)
 
+{-|
+Instance of the 'Pretty' class for 'ParsedTree'.
+
+Prints the syntax tree in a readable format, with indentation
+and visual symbols to represent the tree hierarchy.
+
+@since 1.0.0
+-}
 instance Pretty ParsedTree where
     pPrint :: ParsedTree -> Doc
     pPrint pt = pPrint' Text.PrettyPrint.HughesPJ.empty pt <> text "\n"
 
+-- Auxiliary functions for tree formatting
 nest :: Doc -> Doc
 nest i = i <> text "├╴"
 
@@ -35,6 +72,11 @@ continue i = i <> text "| "
 continue1 :: Doc -> Doc
 continue1 i = i <> text "  "
 
+{-|
+Auxiliary function for formatted printing of a 'ParsedTree'.
+
+@since 1.0.0
+-}
 pPrint' :: Doc -> ParsedTree -> Doc
 pPrint' _ ParsedEpsilon = text "ε"
 pPrint' _ (ParsedT t) = pPrint t
@@ -60,6 +102,19 @@ pPrint' indent (ParsedStar ts) =
         list'     = listnest <> list <> listEnd
 pPrint' _ ParsedNot = Text.PrettyPrint.HughesPJ.empty
 
+{-|
+Extracts all terminal symbols from a 'ParsedTree' as a single string.
+
+=== Usage examples:
+
+>>> flatten (ParsedSeq (ParsedT (T "a")) (ParsedT (T "b")))
+"ab"
+
+>>> flatten ParsedEpsilon
+""
+
+@since 1.0.0
+-}
 flatten :: ParsedTree -> String
 flatten = everything (++) ("" `mkQ` term)
     where

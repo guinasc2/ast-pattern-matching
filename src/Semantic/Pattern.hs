@@ -1,10 +1,23 @@
+{-|
+Module      : Semantic.Pattern
+Description : Semantic analysis of patterns in PEGs.
+Copyright   : (c) Guilherme Drummond, 2025
+License     : MIT
+Maintainer  : guiadnguto@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+This module provides functions for semantic analysis of patterns ('Pattern') in PEGs ('Grammar'). 
+It includes validations, conversions, and error detection, such as invalid patterns, recursions, and duplications. 
+It also defines specific exceptions for semantic errors related to patterns.
+-}
 module Semantic.Pattern 
     ( PatternException(..)
     , Proof
     , processPats
     , correctPat
     , validPat'
-) where
+    ) where
 
 import Syntax.Base (toMaybe, duplicatesOfFirst, filterByFirst, Terminal, NonTerminal, Symbol, Pretty(..))
 import Syntax.Peg (Grammar, Expression(..), expression)
@@ -27,6 +40,14 @@ import Data.Data (Typeable, Data)
 import Text.PrettyPrint.HughesPJ (Doc, text, (<+>), parens)
 import Data.List (intercalate)
 
+-------------------------------------------------------------------------------
+--- Types and Exceptions
+
+{-|
+Represents a proof of matching a pattern ('Pattern') with a PEG.
+
+@since 1.0.0
+-}
 data Proof
     = ProofEpsilon
     | ProofT Terminal
@@ -40,19 +61,45 @@ data Proof
     | ProofVar Symbol String
     deriving (Eq, Show, Ord, Typeable, Data)
 
+{-|
+Exception raised when a pattern references non-terminals out of scope.
+
+@since 1.0.0
+-}
 data RefOutOfScopeException
     = RefOutOfScope NamedSynPat [String]
     deriving (Show, Eq, Ord)
 
+{-|
+Exception raised when a pattern is invalid.
+
+@since 1.0.0
+-}
 data InvalidPatternException
     = InvalidSyntax NamedSynPat
     | InvalidPattern NamedPattern
     deriving (Show, Eq, Ord)
 
+{-|
+Exception raised when there are multiple definitions for the same pattern.
+
+@since 1.0.0
+-}
 data DuplicatePatternException
     = DuplicatePattern String [SyntaxPattern]
     deriving (Show, Eq, Ord)
 
+{-|
+Exceptions related to the semantic analysis of patterns.
+
+Possible exceptions include:
+- 'PatOutOfScope': References to non-terminals out of scope.
+- 'PatRecursive': Recursions between patterns.
+- 'PatInvalid': Invalid patterns.
+- 'PatDuplicate': Duplicate patterns.
+
+@since 1.0.0
+-}
 data PatternException
     = PatOutOfScope [RefOutOfScopeException]
     | PatRecursive [NamedSynPat]
@@ -65,33 +112,69 @@ instance Exception InvalidPatternException
 instance Exception DuplicatePatternException
 instance Exception PatternException
 
+-------------------------------------------------------------------------------
+--- Pretty Instances
+
+{-|
+Instance of the 'Pretty' class for 'PatternException'.
+
+Prints the exception in a readable format, detailing the type of error and the elements involved.
+
+@since 1.0.0
+-}
 instance Pretty PatternException where
     pPrint :: PatternException -> Doc
     pPrint (PatOutOfScope refs) = pPrint refs
-    pPrint (PatRecursive pats) = text "As seguintes definições são mutuamente recursivas:"
+    pPrint (PatRecursive pats) = text "The following definitions are mutually recursive:"
                                  <+> pPrint pats
     pPrint (PatInvalid invalids) = pPrint invalids
     pPrint (PatDuplicate dups) = pPrint dups
 
+{-|
+Instance of the 'Pretty' class for 'RefOutOfScopeException'.
+
+Prints the exception indicating the pattern that references non-terminals out of scope.
+
+@since 1.0.0
+-}
 instance Pretty RefOutOfScopeException where
     pPrint :: RefOutOfScopeException -> Doc
-    pPrint (RefOutOfScope p refs) = text "O padrão" <+> pPrint p
-                                    <+> text "depende de regras não definidas"
+    pPrint (RefOutOfScope p refs) = text "The pattern" <+> pPrint p
+                                    <+> text "depends on undefined rules"
                                     <+> text (intercalate "," refs)
 
+{-|
+Instance of the 'Pretty' class for 'InvalidPatternException'.
+
+Prints the exception indicating the invalid pattern or invalid syntax.
+
+@since 1.0.0
+-}
 instance Pretty InvalidPatternException where
     pPrint :: InvalidPatternException -> Doc
-    pPrint (InvalidPattern p) = text "Padrão inválido:" <+> pPrint p
-    pPrint (InvalidSyntax p) = text "Sintaxe inválida:" <+> pPrint p
+    pPrint (InvalidPattern p) = text "Invalid pattern:" <+> pPrint p
+    pPrint (InvalidSyntax p) = text "Invalid syntax:" <+> pPrint p
 
+{-|
+Instance of the 'Pretty' class for 'DuplicatePatternException'.
+
+Prints the exception indicating the duplicate pattern.
+
+@since 1.0.0
+-}
 instance Pretty DuplicatePatternException where
     pPrint :: DuplicatePatternException -> Doc
-    pPrint (DuplicatePattern n ps) = text "Múltiplas definições para " <+> text n
+    pPrint (DuplicatePattern n ps) = text "Multiple definitions for " <+> text n
                                      <+> parens (pPrint ps)
 
-
 -------------------------------------------------------------------------------
+--- Main Functions
 
+{-|
+Converts a 'SyntaxPattern' to a 'Pattern', if possible.
+
+@since 1.0.0
+-}
 synToPat :: SyntaxPattern -> Maybe Pattern
 synToPat SynEpsilon        = Just PatEpsilon
 synToPat (SynT t)          = Just $ PatT t
@@ -103,16 +186,31 @@ synToPat (SynSeq p1 p2)    = PatSeq <$> synToPat p1 <*> synToPat p2
 synToPat (SynChoice p1 p2) = PatChoice <$> synToPat p1 <*> synToPat p2
 synToPat (SynStar p)       = PatStar <$> synToPat p
 
+{-|
+Converts a 'SyntaxPattern' to a 'Pattern', if possible.
+
+If the conversion fails (e.g., due to invalid references), returns an error.
+
+@since 1.0.0
+-}
 synToPat' :: NamedSynPat -> Either InvalidPatternException NamedPattern
 synToPat' p@(n, sn) = maybeToRight (synToPat sn)
     where
         invalid = Left $ InvalidSyntax p
         maybeToRight = maybe invalid (Right . (n,))
 
+{-|
+Calculates the dependencies of a syntactic pattern ('NamedSynPat').
+
+Returns a list of edges representing the dependencies between patterns. If there are
+references out of scope, returns an exception ('RefOutOfScopeException').
+
+@since 1.0.0
+-}
 dependencies ::
     NamedSynPat
     -> [NamedSynPat]
-    -> Either RefOutOfScopeException [(NamedSynPat, NamedSynPat)] -- Lista de arestas
+    -> Either RefOutOfScopeException [(NamedSynPat, NamedSynPat)] -- List of edges
 dependencies p ps =
     case filter (isNothing . snd) depends of
         [] -> Right $ map (\ x -> (second fromJust x, p)) depends
@@ -122,6 +220,13 @@ dependencies p ps =
         findPats ps' s = (s, lookup s ps')
         depends = map (findPats ps) refs
 
+{-|
+Creates the edges of a dependency graph for syntactic patterns ('NamedSynPat').
+
+If there are references out of scope, returns an exception ('PatOutOfScope').
+
+@since 1.0.0
+-}
 mkEdges :: [NamedSynPat] -> Either PatternException [(NamedSynPat, NamedSynPat)]
 mkEdges ps =
     case lefts result of
@@ -130,24 +235,50 @@ mkEdges ps =
     where
         result = map (`dependencies` ps) ps
 
+{-|
+Checks for duplicate patterns in a list of syntactic patterns ('NamedSynPat').
+
+If there are duplications, returns an exception ('PatDuplicate'). Otherwise, returns
+the original list of patterns.
+
+@since 1.0.0
+-}
 duplicates :: [NamedSynPat] -> Either PatternException [NamedSynPat]
 duplicates ps =
     case duplicatesOfFirst ps of
         [] -> Right ps
         ds -> Left . PatDuplicate $ map (\ x -> DuplicatePattern x (filterByFirst ps x)) ds
 
+{-|
+Creates a dependency graph for syntactic patterns ('NamedSynPat').
+
+If there are duplicate patterns or references out of scope, returns an exception.
+
+@since 1.0.0
+-}
 mkGraph :: [NamedSynPat] -> Either PatternException (Alga.AdjacencyMap NamedSynPat)
 mkGraph ps =
     case duplicates ps of
         Left e -> Left e
         Right ps' -> second (Alga.overlay (Alga.vertices ps) . Alga.edges) (mkEdges ps')
 
+{-|
+Performs topological sorting of a dependency graph of syntactic patterns.
+
+If there are recursions, returns an exception ('PatRecursive'). Otherwise, returns
+the sorted list of patterns.
+
+@since 1.0.0
+-}
 topSort :: Alga.AdjacencyMap NamedSynPat -> Either PatternException [NamedSynPat]
 topSort g = first (PatRecursive . toList) (Algo.topSort g)
 
+{-|
+Validates a pattern ('Pattern') against a PEG ('Grammar').
+Returns a proof if the pattern is valid.
 
-
-
+@since 1.0.0
+-}
 validPat' :: Grammar -> Pattern -> Maybe Proof
 validPat' g (PatNT nt p) = ProofNT nt <$> (checkPat' g p =<< expr)
     where
@@ -156,6 +287,12 @@ validPat' g@(ds, _) p = firstJust (checkPat' g p . snd) ds
     where
         firstJust f = listToMaybe . mapMaybe f
 
+{-|
+Checks if a pattern ('Pattern') matches an expression ('Expression').
+Returns a proof if the pattern is valid.
+
+@since 1.0.0
+-}
 checkPat' :: Grammar -> Pattern -> Expression -> Maybe Proof
 checkPat' _ PatEpsilon           Empty            = Just ProofEpsilon
 checkPat' _ (PatT t)             (ExprT t')       = toMaybe (t == t') (ProofT t)
@@ -171,6 +308,11 @@ checkPat' g (PatNot p)           (Not e)          = ProofNot <$> checkPat' g p e
 checkPat' g p                    (Flatten e)      = checkPat' g p e
 checkPat' _ _                    _                = Nothing
 
+{-|
+Corrects a pattern ('Pattern') based on a proof of matching ('Proof').
+
+@since 1.0.0
+-}
 correctPat :: Pattern -> Proof -> Maybe Pattern
 correctPat PatEpsilon           ProofEpsilon             = Just PatEpsilon
 correctPat (PatT t)             (ProofT t')              = toMaybe (t == t') (PatT t)
@@ -187,6 +329,13 @@ correctPat (PatStar pat)        (ProofStar proof)        = PatStar <$> correctPa
 correctPat (PatNot pat)         (ProofNot proof)         = PatNot <$> correctPat pat proof
 correctPat _                    _                        = Nothing
 
+{-|
+Validates a pattern ('Pattern') against a PEG ('Grammar').
+
+Returns `True` if the pattern is valid, or `False` otherwise.
+
+@since 1.0.0
+-}
 validPat :: Grammar -> Pattern -> Bool
 validPat g (PatNT nt p) = fromMaybe False rule
     where
@@ -194,6 +343,13 @@ validPat g (PatNT nt p) = fromMaybe False rule
         rule = checkPat g p <$> expr
 validPat g@(ds, _) p = any (checkPat g p . snd) ds
 
+{-|
+Checks if a pattern ('Pattern') matches an expression ('Expression').
+
+Returns `True` if there is a match, or `False` otherwise.
+
+@since 1.0.0
+-}
 checkPat :: Grammar -> Pattern -> Expression -> Bool
 checkPat _ PatEpsilon           Empty            = True
 checkPat _ (PatT t)             (ExprT t')       = t == t'
@@ -208,6 +364,13 @@ checkPat g (PatNot p)           (Not e)          = checkPat g p e
 checkPat g p                    (Flatten e)      = checkPat g p e
 checkPat _ _                    _                = False
 
+{-|
+Processes a list of syntactic patterns ('NamedSynPat') and validates the patterns.
+
+Returns a list of valid patterns or an exception indicating the errors found.
+
+@since 1.0.0
+-}
 processSynPats :: Grammar -> [NamedSynPat] -> Either PatternException [NamedPattern]
 processSynPats g ps =
     case lefts pats of
@@ -219,6 +382,13 @@ processSynPats g ps =
         pats = map synToPat' ps
         valids = rights pats
 
+{-|
+Processes a list of syntactic patterns ('NamedSynPat') and validates the patterns.
+
+Returns a list of valid patterns or an exception indicating the errors found.
+
+@since 1.0.0
+-}
 processPats :: Grammar -> [NamedSynPat] -> Either PatternException [NamedPattern]
 processPats g ps =
     case mkGraph ps of

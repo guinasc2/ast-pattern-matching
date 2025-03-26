@@ -1,6 +1,18 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use list comprehension" #-}
 
+{-|
+Module      : Match.Capture
+Description : Functions for matching and capturing patterns in syntax trees.
+Copyright   : (c) Guilherme Drummond, 2025
+License     : MIT
+Maintainer  : guiadnguto@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+This module provides functions to check pattern matching ('Pattern') in
+AST ('ParsedTree') and capture corresponding subtrees.
+-}
 module Match.Capture 
     ( match
     , capture
@@ -10,6 +22,20 @@ import Syntax.Pattern (Pattern(..))
 import Syntax.ParsedTree (ParsedTree(..))
 import Data.Generics (mkQ, everything)
 
+{-|
+Checks if a pattern ('Pattern') matches an AST ('ParsedTree').
+
+The 'match' function traverses the tree and checks if the structure and values match the given pattern.
+
+=== Usage examples:
+>>> match (PatT (T "a")) (ParsedT (T "a"))
+True
+
+>>> match (PatT (T "a")) (ParsedT (T "b"))
+False
+
+@since 1.0.0
+-}
 match :: Pattern -> ParsedTree -> Bool
 match PatEpsilon           ParsedEpsilon         = True
 match (PatNot _)           ParsedNot             = True
@@ -23,6 +49,13 @@ match (PatChoice _ p2)     (ParsedChoiceRight t) = match p2 t
 match (PatStar p)          (ParsedStar ts)       = all (match p) ts
 match _                    _                     = False
 
+{-|
+Collects the variables of a pattern and the subtrees they matched.
+
+The 'collect' function is used internally to capture pairs of patterns and corresponding subtrees.
+
+@since 1.0.0
+-}
 collect :: Pattern -> ParsedTree -> [(Pattern, ParsedTree)]
 collect PatEpsilon             ParsedEpsilon         = []
 collect (PatNot _)             ParsedNot             = []
@@ -36,5 +69,24 @@ collect (PatChoice _ p2)       (ParsedChoiceRight t) = collect p2 t
 collect (PatStar p)            (ParsedStar ts)       = concatMap (collect p) ts
 collect _                      _                     = []
 
+{-|
+Captures all subtrees of an AST ('ParsedTree') that match a variable ('PatVar').
+
+The 'capture' function uses 'match' to verify matches and 'collect' to capture the subtrees.
+
+=== Usage examples:
+
+>>> let pattern = PatSeq (PatT (T "a")) (PatVar (Right (T "b")) "B")
+>>> let tree = ParsedSeq (ParsedT (T "a")) (ParsedT (T "b"))
+>>> capture pattern tree
+[(PatVar (Right (T "b")) "B",ParsedT (T "b"))]
+
+>>> let pattern = (PatVar (Right (T "a")) "A")
+>>> let tree = ParsedSeq (ParsedT (T "a")) (ParsedT (T "b"))
+>>> capture pattern tree
+[(PatVar (Right (T "a")) "A",ParsedT (T "a"))]
+
+@since 1.0.0
+-}
 capture :: Pattern -> ParsedTree -> [(Pattern, ParsedTree)]
 capture p = everything (++) ([] `mkQ` (\x -> if match p x then collect p x else []))

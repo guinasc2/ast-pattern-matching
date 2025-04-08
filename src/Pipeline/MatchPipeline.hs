@@ -15,7 +15,7 @@ module Pipeline.MatchPipeline (module Pipeline.MatchPipeline) where
 
 import Syntax.Base (Pretty(pPrint))
 import Syntax.Peg (Grammar)
-import Syntax.Pattern (NamedSynPat, NamedPattern, Pattern)
+import Syntax.Pattern (NamedSynPat, NamedPattern, Pattern (PatVar))
 import Syntax.ParsedTree (ParsedTree, flatten)
 import Parser.Base (parseWith)
 import Parser.Peg (parseGrammar)
@@ -26,8 +26,10 @@ import Semantic.Pattern (validPat', correctPat, processPats)
 import Match.Capture (match, capture)
 import Match.Rewrite (rewrite)
 import Text.Megaparsec (errorBundlePretty)
-import Data.Bifunctor (Bifunctor(first, bimap))
+import Data.Bifunctor (Bifunctor(first, bimap, second))
 import Data.Foldable (find)
+import Data.Maybe (mapMaybe)
+import Data.List (nub)
 
 type PrettyError = String
 
@@ -146,7 +148,7 @@ of captures for each pattern.
 
 @since 1.0.0
 -}
-parseCapture :: String -> String -> String -> Either PrettyError [(String, [(Pattern, ParsedTree)])]
+parseCapture :: String -> String -> String -> Either PrettyError [(String, [[(Pattern, ParsedTree)]])]
 parseCapture contentsG contentsP contentsF =
     case (ps, f) of
         (Left e, _) -> Left e
@@ -165,7 +167,7 @@ Returns the captures for the specified pattern.
 
 @since 1.0.0
 -}
-parseCapture1 :: String -> String -> String -> String -> Either PrettyError [(Pattern, ParsedTree)]
+parseCapture1 :: String -> String -> String -> String -> Either PrettyError [[(Pattern, ParsedTree)]]
 parseCapture1 contentsG contentsP contentsF name =
     case (ps, f) of
         (Left e, _) -> Left e
@@ -192,15 +194,39 @@ parseRewrite contentsG contentsP contentsF name1 name2 =
         (Left e, _) -> Left e
         (_, Left e) -> Left e
         (Right ps', Right f') ->
-            case (findP1 ps', findP2 ps') of
+            case (findPat name1 ps', findPat name2 ps') of
                 (Nothing, _) -> Left $ "Pattern " ++ name1 ++ " not found in the file"
                 (_, Nothing) -> Left $ "Pattern " ++ name2 ++ " not found in the file"
-                (Just (_, p1), Just (_, p2)) -> Right $ rewrite p1 p2 f'
+                (Just p1, Just p2) -> Right $ rewrite p1 p2 f'
     where
-        findP1 = find ((name1 ==) . fst)
-        findP2 = find ((name2 ==) . fst)
+        findPat p = fmap snd . find ((p ==) . fst)
         ps = parseCorrectPatterns contentsG contentsP
         f = parseFile contentsG contentsF
+
+parseCallGraph :: String -> String -> String -> String -> String -> Either PrettyError [(ParsedTree, ParsedTree)]
+parseCallGraph contentsG contentsP contentsF defPat callPat =
+    case (ps, f) of
+        (Left e, _) -> Left e
+        (_, Left e) -> Left e
+        (Right ps', Right f') ->
+            case (findPat defPat ps', findPat callPat ps') of
+                (Nothing, _) -> Left $ "Pattern " ++ defPat ++ " not found in the file"
+                (_, Nothing) -> Left $ "Pattern " ++ callPat ++ " not found in the file"
+                (Just def, Just call) -> do
+                    let definitions = capture def f'
+                    let pairs = mapMaybe getDef definitions
+                    let calls = map (second (mapMaybe getCall . capture call)) pairs
+                    return $ concatMap (\ (x, y) -> map (x,) y) calls
+    where
+        findPat p = fmap snd . find ((p ==) . fst)
+        ps = parseCorrectPatterns contentsG contentsP
+        f = parseFile contentsG contentsF
+        findPatTree p = fmap snd . find (isVar p)
+        isVar p (PatVar _ n, _) = n == p
+        isVar _ _ = False
+        getCall = findPatTree "name"
+        getDef xs = (,) <$> findPatTree "name" xs <*> findPatTree "block" xs
+
 
 -------------------------------------------------------------------------------
 --- IO
@@ -214,7 +240,7 @@ parseGrammarIO :: FilePath -> IO ()
 parseGrammarIO f = do
     contents <- readFile f
     case parseGrammar contents of
-        Left e -> print e
+        Left e -> putStrLn (errorBundlePretty e)
         Right g -> print $ pPrint g
 
 {-|
@@ -227,7 +253,7 @@ parseValidGrammarIO f = do
     contents <- readFile f
     let g = parseValidGrammar contents
     case g of
-        Left e -> print e
+        Left e -> putStrLn e
         Right g' -> print $ pPrint g'
 
 {-|
@@ -239,7 +265,7 @@ parsePatternsIO :: FilePath -> IO ()
 parsePatternsIO f = do
     contents <- readFile f
     case parsePatterns contents of
-        Left e -> print e
+        Left e -> putStrLn (errorBundlePretty e)
         Right g -> print $ pPrint g
 
 {-|
@@ -264,7 +290,7 @@ parseValidPatternsIO pathGrammar pathPattern = do
     contentsG <- readFile pathGrammar
     contentsP <- readFile pathPattern
     case parseValidPatterns contentsG contentsP of
-        Left e -> print e
+        Left e -> putStrLn e
         Right ps' -> print $ pPrint ps'
 
 {-|
@@ -277,7 +303,7 @@ parseFileIO grammarFile inputFile flat = do
     contentsG <- readFile grammarFile
     contentsF <- readFile inputFile
     case parseFile contentsG contentsF of
-        Left e -> print e
+        Left e -> putStrLn e
         Right t -> putStrLn $ if flat then flatten t else show (pPrint t)
 
 {-|
@@ -291,11 +317,11 @@ parseMatchIO grammarFile patternFile inputFile = do
     contentsP <- readFile patternFile
     contentsF <- readFile inputFile
     case parseMatch contentsG contentsP contentsF of
-        Left e -> print e
+        Left e -> putStrLn e
         Right ms -> print $ concatMap message ms
     where
         message (n, b) = n ++ if b then ": match!" else ": not match!" ++ "\n"
-        
+
 {-|
 Checks whether a specific pattern matches an AST and prints the result.
 
@@ -307,9 +333,9 @@ parseMatch1IO grammarFile patternFile inputFile pat = do
     contentsP <- readFile patternFile
     contentsF <- readFile inputFile
     case parseMatch1 contentsG contentsP contentsF pat of
-        Left e -> print e
+        Left e -> putStrLn e
         Right b -> print $ pat ++ if b then ": match!" else ": not match!" ++ "\n"
-        
+
 {-|
 Captures subtrees matching patterns in an AST and prints the results.
 
@@ -321,12 +347,13 @@ parseCaptureIO grammarFile patternFile inputFile = do
     contentsP <- readFile patternFile
     contentsF <- readFile inputFile
     case parseCapture contentsG contentsP contentsF of
-        Left e -> print e
+        Left e -> putStrLn e
         Right ms -> print $ concatMap message ms
     where
-        message (n, c) = "pattern " ++ n ++ ":\n" ++ concatMap printCapture c ++ "\n"
+        message (n, c) = "pattern " ++ n ++ ":\n" ++ concatMap printCaptures c ++ "\n"
+        printCaptures xs = concatMap printCapture xs ++ "\n"
         printCapture (p, t) = show (pPrint p) ++ ":\n" ++ flatten t ++ "\n"
-        
+
 {-|
 Captures subtrees matching a specific pattern in an AST and prints the results.
 
@@ -338,9 +365,10 @@ parseCapture1IO grammarFile patternFile inputFile pat = do
     contentsP <- readFile patternFile
     contentsF <- readFile inputFile
     case parseCapture1 contentsG contentsP contentsF pat of
-        Left e -> print e
-        Right m -> print $ concatMap printCapture m ++ "\n"
+        Left e -> putStrLn e
+        Right m -> print $ concatMap printCaptures m ++ "\n"
     where
+        printCaptures xs = concatMap printCapture xs ++ "\n"
         printCapture (p, t) = show (pPrint p) ++ ":\n" ++ flatten t ++ "\n"
 
 {-|
@@ -354,5 +382,14 @@ parseRewriteIO grammarFile patternFile inputFile pat1 pat2 = do
     contentsP <- readFile patternFile
     contentsF <- readFile inputFile
     case parseRewrite contentsG contentsP contentsF pat1 pat2 of
-        Left e -> print e
+        Left e -> putStrLn e
         Right t -> putStrLn $ flatten t
+
+parseCallGraphIO :: FilePath -> FilePath -> FilePath -> String -> String -> IO ()
+parseCallGraphIO grammarFile patternFile inputFile pat1 pat2 = do
+    contentsG <- readFile grammarFile
+    contentsP <- readFile patternFile
+    contentsF <- readFile inputFile
+    case parseCallGraph contentsG contentsP contentsF pat1 pat2 of
+        Left e -> putStrLn e
+        Right t -> putStrLn $ concat . nub $ map (\ (x, y) -> flatten x ++ " -> " ++ flatten y ++ "\n") t

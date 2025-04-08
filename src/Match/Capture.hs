@@ -79,14 +79,14 @@ The 'capture' function uses 'match' to verify matches and 'collect' to capture t
 >>> let pattern = PatSeq (PatT (T "a")) (PatVar (Right (T "b")) "B")
 >>> let tree = ParsedSeq (ParsedT (T "a")) (ParsedT (T "b"))
 >>> capture pattern tree
-[(PatVar (Right (T "b")) "B",ParsedT (T "b"))]
+[[(PatVar (Right (T "b")) "B",ParsedT (T "b"))]]
 
 >>> let pattern = (PatVar (Right (T "a")) "A")
 >>> let tree = ParsedSeq (ParsedT (T "a")) (ParsedT (T "b"))
 >>> capture pattern tree
-[(PatVar (Right (T "a")) "A",ParsedT (T "a"))]
+[[(PatVar (Right (T "a")) "A",ParsedT (T "a"))]]
 
 @since 1.0.0
 -}
-capture :: Pattern -> ParsedTree -> [(Pattern, ParsedTree)]
-capture p = everything (++) ([] `mkQ` (\x -> if match p x then collect p x else []))
+capture :: Pattern -> ParsedTree -> [[(Pattern, ParsedTree)]]
+capture p = everything (++) ([] `mkQ` (\x -> if match p x then [collect p x] else []))

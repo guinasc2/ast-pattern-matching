@@ -1,0 +1,5 @@
+pattern call : primary := #name:identifier @space "(" @space #v2:expr_list? ")"
+
+pattern definition : function_def := "def" @space #name:identifier "(" @space #p:id_list? ")" @space ":" @space #block:block
+
+pattern space : space := " "*

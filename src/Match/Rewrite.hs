@@ -47,4 +47,4 @@ a variable ('PatVar') with another pattern.
 @since 1.0.0
 -}
 rewrite :: Pattern -> Pattern -> ParsedTree -> ParsedTree
-rewrite p p' = everywhere $ mkT (\x -> foldr ((flip . replace) p') x (capture p x))
+rewrite p p' = everywhere $ mkT (\x -> foldr ((flip . replace) p') x (concat (capture p x)))

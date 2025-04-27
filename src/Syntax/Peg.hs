@@ -42,6 +42,7 @@ An expression can be:
 - 'Star': A repetition of zero or more times of an expression.
 - 'Not': A negation of an expression.
 - 'Flatten': An expression that must be "flattened".
+- 'Indent': An expression that must be "indented" with respect to the first.
 
 @since 1.0.0
 -}
@@ -54,6 +55,7 @@ data Expression
     | Star Expression
     | Not Expression
     | Flatten Expression
+    | Indent Expression Expression
     deriving (Show, Eq, Ord, Typeable, Data)
 
 {-|
@@ -109,6 +111,7 @@ instance Pretty Expression where
     pPrint (Star e)         = maybeParens (parensStar e) (pPrint e) <> text "*"
     pPrint (Not e)          = text "!" <> maybeParens (parensNot e) (pPrint e)
     pPrint (Flatten e)      = text "^" <> parens (pPrint e)
+    pPrint (Indent e b)      = parens (pPrint e) <+> text ">" <+> parens (pPrint b)
 
 {-|
 Instance of the 'Pretty' class for 'Definition'.
@@ -212,5 +215,5 @@ produces :: Grammar -> NonTerminal -> Terminal -> Bool
 produces g nt t = isJust produce
     where
         expr = expression g nt
-        rules = terminals' <$> expr
-        produce = find (== t) =<< rules
+        terms = terminals' <$> expr
+        produce = find (== t) =<< terms

@@ -59,7 +59,7 @@ parseValidPatterns contentsG contentsP =
     case (g, ps) of
         (Left e, _) -> Left e
         (_, Left e) -> Left e
-        (Right g', Right ps') -> first show (processPats g' ps')
+        (Right g', Right ps') -> first (show . pPrint) (processPats g' ps')
     where
         g = parseValidGrammar contentsG
         ps = first errorBundlePretty (parsePatterns contentsP)
@@ -77,7 +77,7 @@ parseCorrectPatterns contentsG contentsP =
     case (g, ps) of
         (Left e, _) -> Left e
         (_, Left e) -> Left e
-        (Right g', Right ps') -> bimap show (correct g') (processPats g' ps')
+        (Right g', Right ps') -> bimap (show . pPrint) (correct g') (processPats g' ps')
     where
         g = parseValidGrammar contentsG
         ps = first errorBundlePretty (parsePatterns contentsP)
@@ -218,10 +218,10 @@ parseCallGraph contentsG contentsP contentsF defPat callPat =
                     let calls = map (second (mapMaybe getCall . capture call)) pairs
                     return $ concatMap (\ (x, y) -> map (x,) y) calls
     where
-        findPat p = fmap snd . find ((p ==) . fst)
+        findPat p = (snd <$>) . find ((p ==) . fst)
         ps = parseCorrectPatterns contentsG contentsP
         f = parseFile contentsG contentsF
-        findPatTree p = fmap snd . find (isVar p)
+        findPatTree p = (snd <$>) . find (isVar p)
         isVar p (PatVar _ n, _) = n == p
         isVar _ _ = False
         getCall = findPatTree "name"
@@ -289,7 +289,20 @@ parseValidPatternsIO :: FilePath -> FilePath -> IO ()
 parseValidPatternsIO pathGrammar pathPattern = do
     contentsG <- readFile pathGrammar
     contentsP <- readFile pathPattern
-    case parseValidPatterns contentsG contentsP of
+    case parseValidPatterns contentsG contentsP of 
+        Left e -> putStrLn e
+        Right ps' -> print $ pPrint ps'
+
+{-|
+Corrects and prints syntactic patterns against a PEG from files.
+
+@since 1.0.0
+-}
+parseCorrectPatternsIO :: FilePath -> FilePath -> IO ()
+parseCorrectPatternsIO pathGrammar pathPattern = do
+    contentsG <- readFile pathGrammar
+    contentsP <- readFile pathPattern
+    case parseCorrectPatterns contentsG contentsP of
         Left e -> putStrLn e
         Right ps' -> print $ pPrint ps'
 
@@ -305,6 +318,22 @@ parseFileIO grammarFile inputFile flat = do
     case parseFile contentsG contentsF of
         Left e -> putStrLn e
         Right t -> putStrLn $ if flat then flatten t else show (pPrint t)
+
+parseMultFileIO :: FilePath -> FilePath -> Int -> IO ()
+parseMultFileIO grammarFile inputFiles n = do
+    contentsG <- readFile grammarFile
+    contentsF <- readFile inputFiles
+    let files = take n $ lines contentsF
+    mapM_ (parseSingle contentsG) files
+
+parseSingle :: String -> FilePath -> IO ()
+parseSingle grammar input = do
+    contents <- readFile input
+    case parseFile grammar contents of
+        Left e -> putStrLn $ input ++ ":\n" ++ e
+        Right t -> do
+            putStrLn $ input ++ ": ok\nResultado em output/teste.txt"
+            writeFile "output/teste.txt" (show $ pPrint t)
 
 {-|
 Checks pattern matching in an AST and prints the results.

@@ -165,6 +165,7 @@ nullable g (nt, ExprNT nt')     = nt == nt'
 nullable g (nt, Sequence e1 e2) = nullable g (nt, e1) && nullable g (nt, e2)
 nullable g (nt, Choice e1 e2)   = nullable g (nt, e1) || nullable g (nt, e2)
 nullable g (nt, Flatten e)      = nullable g (nt, e)
+nullable g (nt, Indent e b)     = nullable g (nt, e) && nullable g (nt, b)
 
 {-|
 Identifies nullable expressions inside repetition operators (`*`, 'Star').
@@ -188,6 +189,9 @@ starNullable g (nt, Sequence e1 e2) = if nullable g (nt, e1)
 starNullable g (nt, Star e)         = if nullable g (nt, e)
                                         then [(nt, Star e)]
                                         else starNullable g (nt, e)
+starNullable g (nt, Indent e1 e2)   = if nullable g (nt, e1)
+                                        then starNullable g (nt, e1) ++ starNullable g (nt, e2)
+                                        else starNullable g (nt, e1)
 
 {-|
 Checks for nullable expressions inside repetition operators in a PEG ('Grammar').
@@ -220,6 +224,9 @@ referencesNull g (nt, Choice e1 e2)   = referencesNull g (nt, e1) ++ referencesN
 referencesNull g (nt, Star e)         = referencesNull g (nt, e)
 referencesNull g (nt, Not e)          = referencesNull g (nt, e)
 referencesNull g (nt, Flatten e)      = referencesNull g (nt, e)
+referencesNull g (nt, Indent e1 e2)   = if nullable g (nt, e1)
+                                        then referencesNull g (nt, e1) ++ referencesNull g (nt, e2)
+                                        else referencesNull g (nt, e1)
 
 {-|
 Calculates the dependencies of a definition in a PEG ('Grammar').
@@ -307,7 +314,7 @@ Left (LeftRecursive [(NT "S",Sequence (ExprNT (NT "S")) (ExprT (T "a")))])
 @since 1.0.0
 -}
 processPeg :: Grammar -> Either PegException Grammar
-processPeg g =
+processPeg g = 
     case mkGraph g' of
         Left x -> Left x
         Right graph ->

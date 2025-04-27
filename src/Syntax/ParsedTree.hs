@@ -45,6 +45,7 @@ data ParsedTree
     | ParsedChoiceRight ParsedTree
     | ParsedStar [ParsedTree]
     | ParsedNot
+    | ParsedIndent ParsedTree ParsedTree
     deriving (Show, Typeable, Data)
 
 {-|
@@ -101,6 +102,10 @@ pPrint' indent (ParsedStar ts) =
         list      = hcat (map (\ x -> nest indent <> pPrint' (continue indent) x <> text "\n") ts)
         list'     = listnest <> list <> listEnd
 pPrint' _ ParsedNot = Text.PrettyPrint.HughesPJ.empty
+pPrint' indent (ParsedIndent e b) =
+    text "Indent" <> text "\n"
+    <> nest indent <> pPrint' (continue indent) e <> text "\n"
+    <> nest1 indent <> pPrint' (continue1 indent) b
 
 {-|
 Extracts all terminal symbols from a 'ParsedTree' as a single string.

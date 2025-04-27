@@ -21,7 +21,7 @@ module Syntax.Pattern
     ) where
 
 import Syntax.Base (NonTerminal(..), Terminal(..), Symbol, Pretty(..))
-import Text.PrettyPrint.HughesPJ ((<+>), text, parens, Doc)
+import Text.PrettyPrint.HughesPJ ((<+>), text, parens, Doc, brackets)
 import Data.List (nub)
 import Data.Bifunctor (Bifunctor(second))
 import Data.Generics (everything, mkQ, Typeable, Data, everywhere, mkT)
@@ -48,6 +48,7 @@ data Pattern
     | PatSeq Pattern Pattern
     | PatChoice Pattern Pattern
     | PatStar Pattern
+    | PatStarSeq [Pattern]
     | PatNot Pattern
     | PatVar Symbol String
     deriving (Eq, Show, Ord, Typeable, Data)
@@ -111,6 +112,7 @@ instance Pretty Pattern where
     pPrint (PatSeq p1 p2)    = pPrint p1 <+> pPrint p2
     pPrint (PatChoice p1 p2) = pPrint p1 <+> text "/" <+> pPrint p2
     pPrint (PatStar p)       = (parens . pPrint) p <> text "*"
+    pPrint (PatStarSeq ps)   = (brackets . pPrint) ps
     pPrint (PatNot p)        = text "!" <> (parens . pPrint) p
 
 {-|

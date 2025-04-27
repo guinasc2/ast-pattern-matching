@@ -1,4 +1,10 @@
-pattern call : primary := #name:identifier @space "(" @space #v2:expr_list? ")"
+pattern call : primary := #name:identifier @space "(" @space #v:expr_list? ")"
+
+pattern call2 : primary := #name:identifier @space "(" @space @teste ")"
+--pattern teste : expr_list := #v:expression @space (#s:sep #v2:expression @space)*
+--pattern teste : expr_list := #v:expression @space (#s:sep #v1:expression @space) 
+--pattern teste : expr_list := #v:expression @space (#s:sep #v1:expression @space) (#s:sep #v2:expression @space)
+pattern teste : expr_list := #v:expression @space
 
 pattern definition : function_def := "def" @space #name:identifier "(" @space #p:id_list? ")" @space ":" @space #block:block
 

@@ -24,7 +24,7 @@ import Text.Megaparsec
     (eof, choice, some, sepBy1, someTill, try, optional)
 import Text.Megaparsec.Char (alphaNumChar, char, string)
 import qualified Text.Megaparsec.Char.Lexer as Lexer
-import Control.Monad.Combinators.Expr (Operator(Postfix, Prefix), makeExprParser)
+import Control.Monad.Combinators.Expr (Operator(Postfix, Prefix, InfixL), makeExprParser)
 
 -------------------------------------------------------------------------------
 --- PEG parser
@@ -169,12 +169,13 @@ Defines the available prefix and suffix operators.
 pegOperatorTable :: [[Operator Parser Expression]]
 pegOperatorTable =
     [ [ pegSuffix "*" Star
-      , pegSuffix "+" plus
-      , pegSuffix "?" question
-      ]
+        , pegSuffix "+" plus
+        , pegSuffix "?" question
+        ]
     , [ pegPrefix "!" Not
-      , pegPrefix "&" (Not . Not)
-      ]
+        , pegPrefix "&" (Not . Not)
+        ]
+    , [ pegInfix ">" Indent ]
     ]
     where
         plus e = Sequence e (Star e)
@@ -195,6 +196,14 @@ Defines a prefix operator for PEG expressions.
 -}
 pegPrefix :: String -> (Expression -> Expression) -> Operator Parser Expression
 pegPrefix name f = Prefix (f <$ symbol name)
+
+{-|
+Defines a infix operator for PEG expressions.
+
+@since 1.0.0
+-}
+pegInfix :: String -> (Expression -> Expression -> Expression) -> Operator Parser Expression
+pegInfix name f = InfixL (f <$ symbol name)
 
 {-|
 Executes the PEG parser on an input string.

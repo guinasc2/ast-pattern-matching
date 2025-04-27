@@ -1,55 +1,64 @@
-file <- statement+
-statement <- compound_stmt / simple_stmt
+file <- (blank* newline)* statement+
 
-simple_stmt <- simple NEWLINE
-compound_stmt <- function_def / if_stmt / for_stmt / while_stmt
+-- TODO: Será que faz sentido isso? Um comentário ser uma declaração?
+statement <- (compound / simple / comment) blank* newline*
 
-simple <- assignment / return_stmt / import_stmt / "break" / "continue" 
+compound <- function_def / if_stmt / while_stmt / for_stmt
 
-assignment <- NAME attr SPACE expression
-attr <- "=" / "+=" / "-=" / "*=" / "/="
+function_def <- ("def" space identifier "(" space id_list? ")" space ":") > statement
+if_stmt      <- (("if" space expression ":") > statement) (elif_block / else_block)?
+elif_block   <- (("elif" space expression ":") > statement) (elif_block / else_block)?
+else_block   <- ("else" space ":") > statement
 
-return_stmt <- "return" expression
-import_stmt <- "import" NAME
+while_stmt   <- ("while" space expression ":") > statement
+for_stmt     <- ("for" space identifier space "in" space expression ":") > statement
 
-function_def <- "def" NAME "(" arguments? ")" ":" NEWLINE block
-block <- (INDENT statement)+
+simple <- "break" / "continue" / import_stmt / assignment / return_stmt / expression
+return_stmt <- "return" space expr_list
+import_stmt <- simple_import / from_import
+simple_import <- "import" space identifier
+from_import <- "from" space identifier space "import" space (id_list / "*")
 
-if_stmt <- "if" expression ":" NEWLINE block elif_stmt? / "if" expression ":" NEWLINE block else_block?
-elif_stmt <- "elif" expression ":" NEWLINE block elif_stmt? / "elif" expression ":" NEWLINE block else_block?
-else_block <- "else" ":" NEWLINE block
+assignment <- id_list space attr space expression
+attr       <- "=" / "+=" / "-=" / "*=" / "/="
 
-for_stmt <- "for" NAME "in" expression ":" NEWLINE block
-while_stmt <- "while" expression ":" NEWLINE block
+expression <- or_expr ("or" space or_expr)*
+or_expr    <- and_expr ("and" space and_expr)*
+and_expr   <- "not" space and_expr / comparison
+comparison <- sum (op_comp sum)*
+sum        <- term (op_term term)* 
+term       <- factor (op_factor factor)*
+factor     <- power (op_power power)*
+power      <- "-" neg / neg
+neg        <- primary space / "(" space expression ")" space
 
-primary <- NAME / NAME "(" arguments? ")" / atom
+op_comp   <- ("==" / "!=" / "<=" / ">=" / "<" / ">") space
+op_term   <- ("+" / "-") space
+op_factor <- ("*" / "/" / "%") space
+op_power  <- "**" space
 
-arguments <- expression ("," expression)*
+primary <- function_call / array_access / "[" items? "]" / atom
+function_call <- identifier space "(" space expr_list? ")" ("." primary)?
+array_access <- identifier space "[" space expression "]" ("." primary)?
 
-atom <- "True" / "False"  / "None"  / strings / NUMBER
+atom      <- "True" / "False" / "None" / number / strings / identifier
+expr_list <- expr1 space (sep expr1 space)*
+expr1     <- (single_id space "=" space)? expression
+items     <- expression (sep expression space)*
+id_list   <- identifier space (sep identifier space)*
 
-expression <- term (op3 term)*
-term <- factor (op2 factor)*
-factor <- primary SPACE / "(" expression ")"
+sep <- "," space
 
-op3 <- "+" / "-"
-op2 <- "*" / "/"
-op1 <- "**"
-
-NAME <- identifier ("." identifier)* SPACE
-identifier <- varStart varEnd
-varStart <- [a-zA-Z]
-varEnd <- [a-zA-Z_0-9]*
-
-NUMBER <- INTEGER / DECIMAL
-INTEGER <- [1-9] [0-9]*
-DECIMAL <- INTEGER "." [0-9]+
-
-strings <- (fstring / string)+ 
-string <- ["] (!["] .)* ["] / ['] (!['] .)* [']
+^strings <- fstring / string
 fstring <- "f" string
-Char <- [a-zA-Z!#$%&'()*+,-./0-9:;<=>?@^_{|}]*
+string  <- ['] (!['] char)* ['] / ["] (!["] char)* ["]
+-- TODO: Fazer uma forma mais fácil
+char    <- [a-zA-Z0-9 :{}.,;^+-*/%()_!?áéúçã%] / "[" / "]"
 
-NEWLINE <- "\n" / "\r" / "\r\n"
-INDENT <- "\t"+ / SPACE
-SPACE <- " "*
+^identifier <- single_id ("." single_id)*
+single_id   <- [a-zA-Z] [a-zA-Z0-9_]*
+^number     <- [0-9]+
+space       <- " "*
+^blank       <- comment / " "
+^comment    <- "#" char*
+^newline    <- "\r\n" / "\r" / "\n"

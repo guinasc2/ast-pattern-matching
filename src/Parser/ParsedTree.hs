@@ -15,10 +15,12 @@ module Parser.ParsedTree (mkParser) where
 import Syntax.Base (Terminal(..))
 import Syntax.Peg (Grammar, Expression(..), expression)
 import Syntax.ParsedTree (ParsedTree(..), flatten)
-import Parser.Base (Parser, blank)
+import Parser.Base (Parser, blank, sc)
 import Text.Megaparsec (notFollowedBy, many, choice, eof, optional, try)
 import Text.Megaparsec.Char (string)
 import Data.Maybe (fromJust)
+import qualified Text.Megaparsec.Char.Lexer as Lexer
+
 
 {-|
 Generates a parser for a PEG.
@@ -72,3 +74,8 @@ mkParser' g (Sequence e1 e2) = ParsedSeq <$> mkParser' g e1 <*> mkParser' g e2
 mkParser' g (Star e) = ParsedStar <$> many (mkParser' g e)
 mkParser' g (Not e) = ParsedNot <$ notFollowedBy (mkParser' g e)
 mkParser' g (Flatten e) = ParsedT . T . flatten <$> mkParser' g e
+mkParser' g (Indent e b) = Lexer.indentBlock sc p
+    where
+        p = do
+            expr <- mkParser' g e
+            return $ Lexer.IndentSome Nothing (return . ParsedIndent expr . foldr1 ParsedSeq) (mkParser' g b)

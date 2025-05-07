@@ -5,6 +5,7 @@
 \renewcommand\footnotetextcopyrightpermission[1]{}
 
 \usepackage{amsmath}
+\usepackage{proof}
 \usepackage{amsfonts}
 \usepackage{enumitem}
 
@@ -37,6 +38,99 @@ Parsing Expression Grammars (PEGs), designed to detect the use of advanced
 or unauthorized constructs in students' code submissions. This tool aims to 
 assist educators in enforcing pedagogical boundaries while maintaining 
 flexibility across different programming languages.
+
+\section{An Overview of PEGs}
+
+Intuitively, PEGs are a formalism for describing top-down parsers.
+Formally, a PEG is a 4-tuple $(V,\Sigma,R,e_S)$, where $V$ is a 
+finite set of variables, $\Sigma$ is the alphabet, $R$ is the finite 
+set of rules, and $e_s$ is the start expression. Each rule $r \in R$ is a 
+pair $(A,e)$, usually written $A \leftarrow e$, where $A \in V$ and $e$ 
+is a parsing expression. We let the meta-variable $a$ denote an 
+arbitrary alphabet symbol, $A$ a variable and $e$ a parsing expression. 
+Following common practice, all meta-variables can appear primed or 
+sub-scripted. The following context-free grammar defines
+the syntax of a parsing expression:
+\[
+\begin{array}{lcl}
+e & \to  & \epsilon \,\mid\, a \,\mid\, A\,\mid\,e_1\:e_2\,
+\mid\,e_1\,/\,e_2\,\mid\,e^\star\,\mid\,!\,e\\
+\end{array}
+\]
+The execution of parsing expressions is defined by an inductively defined
+judgment that relates pairs formed by a parsing expression and an input string
+to pairs formed by the consumed prefix and the remaining string.
+Notation $(e,s) \Rightarrow_G (s_p,s_r)$ denote that parsing expression $e$
+consumes the prefix $s_p$ from the input string $s$ leaving the suffix $s_r$.
+The notation $(e,s) \Rightarrow_G \bot$ denote the fact that $s$ cannot be parsed by
+$e$. We let meta-variable $r$ denote an arbitrary parsing result, i.e.,
+either $r$ is a pair $(s_p,s_r)$ or $\bot$. We say that an expression $e$
+fails if its execution over an input produces $\bot$; otherwise, it succeeds.
+Figure~\ref{fig:pegsemantics} defines the PEG semantics.
+\begin{figure*}[h!]
+   \[
+      \begin{array}{cccc}
+         \infer[_{\{Eps\}}]{(\epsilon,s)\Rightarrow_G (\epsilon,s)}{} &
+         \infer[_{\{ChrS\}}]{(a,as_r) \Rightarrow_G (a,s_r)}{}  &
+         \infer[_{\{ChrF\}}]{(a,bs_r) \Rightarrow_G \bot}{a \neq b} &
+         \infer[_{\{Var\}}]{(A,s) \Rightarrow_G r}
+                           {A \leftarrow e \in R & (e,s) \Rightarrow_G r} \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Cat_{S1}\}}]{(e_1\,e_2,s_{p_1}s_{p_2}s_r) \Rightarrow_G (s_{p_1}s_{p_2}, s_r)}
+                                 {(e_1,s_{p_1}s_{p_2}s_r) \Rightarrow_G (s_{p_1},s_{p_2}s_r) &
+                                 (e_2,s_{p_2}s_r)\Rightarrow_G (s_{p_2},s_r)}
+         } &
+         \multicolumn{2}{c}{
+            \infer[_{\{Cat_{F2}\}}]{(e_1\,e_2,s_ps_r) \Rightarrow_G \bot}
+                                 { (e_1,s_ps_r) \Rightarrow_G (s_p,s_r) &
+                                    (e_2,s_r) \Rightarrow_G \bot}} \\ \\
+         \infer[_{\{Cat_{F1}\}}]{(e_1\,e_2,s)\Rightarrow_G \bot}{(e_1,s) \Rightarrow_G \bot} &
+         \infer[_{\{Alt_{S1}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G (s_p,s_r)}
+                                {(e_1,s_p\,s_r)\Rightarrow_G (s_p,s_r)} &
+         \multicolumn{2}{c}{
+            \infer[_{\{Alt_{S2}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G r}
+                                  {(e_1,s_p\,s_r)\Rightarrow_G \bot &
+                                   (e_2,s_p\,s_r)\Rightarrow_G r}
+         } \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Rightarrow_G (s_{p_1}s_{p_2},s_r)}
+                                 {(e,s_{p_1}s_{p_2}s_r) \Rightarrow_G (s_{p_1},s_{p_2}s_r) &
+                                  (e^\star, s_{p_2}s_r) \Rightarrow_G (s_{p_2},s_r)}
+         } &
+         \multicolumn{2}{c}{
+            \infer[_{\{Star_{end}\}}]{(e^\star,s) \Rightarrow_G (\epsilon,s)}
+                                    {(e,s) \Rightarrow_G \bot}} \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Rightarrow_G \bot}
+                               {(e,s_p\,s_r) \Rightarrow_G (s_p,s_r)}
+         } &
+         \infer[_{\{Not_S\}}]{(!\,e,s) \Rightarrow_G (\epsilon,s)}
+         {(e,s) \Rightarrow_G \bot}
+           &
+         \infer[_{\{ChrNil\}}]{(a,\epsilon) \Rightarrow_G \bot}{}
+      \end{array}
+   \]
+   \centering
+   \caption{Parsing expressions operational semantics.}
+   \label{fig:pegsemantics}
+\end{figure*}
+We comment on some rules of the semantics. Rule $_{Eps}$ specifies that
+expression $\epsilon$ will not fail on any input $s$ by leaving it unchanged.
+Rule $_{ChrS}$ specifies that an expression $a$ consumes the first character when
+the input string starts with an `a' and rule $_{ChrF}$ shows that it fails when
+the input starts with a different symbol. Rule $_{Var}$ parses the input using
+the expression associated with the variable in the grammar $G$. When parsing a
+sequence expression, $e_1\:e_2$, the result is formed by $e_1$ and $e_2$ parsed
+prefixes and the remaining input is given by $e_2$. Rules $_{Cat_{F1}}$ and
+$_{Cat_{F2}}$ say that if $e_1$ or $e_2$ fail, then the whole expression fails.
+The rules for choice impose that we only try
+expression $e_2$ in $e_1 / e_2$ when $e_1$ fails. Parsing a star
+expression $e^\star$ consists in repeatedly execute $e$ on the input string.
+When $e$ fails, $e^\star$ succeeds without consuming any symbol of the input
+string. Finally, the rules for the not predicate expression, $!\,e$, specify
+that whenever the expression $e$ succeeds on input $s$, $!\,e$ fails; and when $e$
+fails on $s$ we have that $!\,e$ succeeds without consuming any input.
+
 
 
 \section{Related work}

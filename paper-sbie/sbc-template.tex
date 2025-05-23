@@ -1,0 +1,468 @@
+\documentclass[12pt]{article}
+
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+% \usepackage[latin1]{inputenc} 
+
+% \usepackage{hyperref}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{proof,tikz}
+\usetikzlibrary{automata, positioning, arrows}
+
+\usepackage[Algoritmo]{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{listings}
+
+\sloppy
+
+\title{---}
+
+\author{Anônimo}
+
+
+\address{Departamento de Computação -- Universidade Federal de Ouro Preto
+  (UFOP)\\
+  35400-000 -- Ouro Preto -- MG -- Brazil
+}
+
+\begin{document} 
+
+\maketitle
+
+\begin{abstract}
+  -----
+\end{abstract}
+     
+\begin{resumo}
+  -----
+\end{resumo}
+
+
+\section{Introdução}\label{Introducao}
+
+Com o aumento de cursos destinados a programação de computadores, muitos 
+professores passaram a usar juízes automáticos (ou corretores automáticos de 
+código-fonte) para auxiliar na correção de exercícios e fornecer 
+\textit{feedback} mais imediato aos alunos. Imagine que você é um professor de
+uma disciplina de programação e está avaliando uma questão cujo enunciado é o
+seguinte:
+
+``Você foi contratado pelo Ministério do Meio Ambiente para avaliar a meta de 
+reflorestamento das regiões brasileiras e vai implementar um programa para 
+ajudá-lo em suas análises. Para facilitar a coleta de dados, cada estado é 
+dividido em microrregiões. Você recebe periodicamente um vetor de valores 
+inteiros indicando a quantidade mínima de árvores nativas plantadas para cada 
+estado, representando a meta de cada estado, e uma matriz de valores inteiros 
+que mostra a quantidade de árvores plantadas em cada estado em cada microrregião,
+as linhas da matriz representam as microrregiões e as colunas os estados. 
+As entradas do vetor e da matriz são feitas por meio das funções inputVetor e 
+inputMatriz, respectivamente (definidas no livro texto da disciplina).
+
+Seu programa calcula o total de árvores plantadas pelos estados e avalia se eles 
+cumpriram com a meta (quantidade de árvores plantadas é igual ou superior à meta 
+do estado), imprimindo no terminal os estados que não conseguiram cumprir a meta 
+(os números dos estados começam de 1, embora os índices comecem de 0, então, índice 
+0 representa o estado 1, índice 1 representa o estado 2, e assim por diante). 
+A relação entre o vetor e a matriz se dá pelos índices dos elementos do vetor e os 
+índices de coluna da matriz.''
+
+E, ao abrir a solução submetida por um aluno, se depara com esse código:
+
+\begin{lstlisting}[language=Python, breaklines]
+  def inputVetor():
+    entrada = input("Informe as metas dos estados: ")
+    return list(map(int, entrada.split(',')))
+
+  def inputMatriz():
+    entrada = input("Informe o plantio de arvores: ")
+    linhas = entrada.split(';')
+    matriz = [list(map(int, linha.split(','))) for linha in linhas]
+    return matriz
+
+  def main():
+    print("Ministerio do Meio Ambiente")
+    metas = inputVetor()
+    plantio = inputMatriz()
+    
+    num_estados = len(metas)
+    totais_plantio = [sum(linha[i] for linha in plantio) for i in range(num_estados)]
+    
+    for i in range(num_estados):
+      if totais_plantio[i] < metas[i]:
+        print(f"Estado {i+1}, meta = {metas[i]}, plantio = {totais_plantio[i]}")
+
+  if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+Que embora correto e gere a resposta esperada, usa recursos da linguagem Python 
+que ignoram os objetivos de aprendizagem pretendidos ou não foram apresentados 
+na disciplina, como o uso das funções \texttt{map} e \texttt{sum}, 
+\textit{list comprehension} e o uso do atributo \texttt{\_\_name\_\_}.
+Para atender a necessidade de não apenas validar a resposta, mas também validar
+o código submetido pelo aluno, propomos uma bibliteca para análise de código 
+multi-linguagem baseada em Parsing Expression Grammars (PEGs)\cite{ford2004-peg} 
+na linguagem Haskell, projetada para detectar o uso de construções avançadas ou não 
+autorizadas pelos alunos, visando auxiliar professores a impor limites pedagógicos.
+
+% TODO: explicar o que é uma PEG de forma bem simplificada
+
+\section{Biblioteca: escolher um nome}
+
+% A biblioteca utiliza Árvores Abstratas de Síntaxe (ASTs) para realizar casamento
+% de padrões. A forma da AST é determinada pela PEG utilizada para fazer o parsing
+% de determinado arquivo.
+A biblioteca permite ao usuário definir PEGs e padrões, e oferece operações 
+para processar outros tipos de arquivos usando essas definições. A PEG é usada
+para realizar a análise sintática do arquivo processado, gerando uma Árvore
+Abstrata de Síntaxe (AST) do arquivo. Com a AST gerada, é possível realizar
+casamento de padrões, capturar subárvores e reescrever trechos da árvore,
+fazendo, assim, alterações no texto original.
+% A seguir, um exemplo de uma PEG para expressões envolvendo operações de soma,
+% multiplicação e parênteses com números e variáveis:
+
+% \begin{lstlisting}[label=ex:peg-expr,caption=PEG para expressões,frame=tb]
+% E   <- T ("+" T)*
+% T   <- F ("*" F)*
+% F   <- Num / Var / "(" E ")"
+% Num <- [0-9]+
+% Var <- [a-zA-Z] [a-zA-Z_0-9]* 
+% \end{lstlisting}
+
+% E um padrão para casar com expressões que envolvem multiplicações:
+
+% \begin{lstlisting}[label=ex:pat-expr-mul,caption=Padrão para expressões,frame=tb]
+% pattern mult : T := #e1:F ("*" #e2:F)*
+% \end{lstlisting}
+
+Para tentar restringir o uso de construções indevidas, foi escrita uma PEG que
+aceita um \textit{subset} de Python, permitindo apenas o que foi apresentado ao
+longo da disciplina de Programação de Computadores, como: definições e chamadas 
+de funções, os comandos para decisão (\texttt{if}, \texttt{elif}, \texttt{else}), 
+para repetição (\texttt{while}, \texttt{for}), as duas formas de importação
+(\texttt{import X} e \texttt{from X import Y}), os operadores de atribuição,
+lógicos e aritméticos, vetores e matrizes.
+Porém, apenas isso não é suficiente para eliminar totalmente todas as construções
+não autorizadas, como usar uma função definida em alguma biblioteca para resolver
+o problema, em vez de desenvolver a própria solução. Na Seção~\ref{sec:estudos-caso}
+são apresentados dois estudos de caso: um trata de uma forma de resolver o problema 
+apresentado anteriormente e o segundo, dada a capacidade da biblioteca para 
+reescrever a AST de um programa, trata de sugestões para reescrita do código, 
+com o intuito de mostrar ao aluno formas de simplificar e melhorar a estrutura 
+algorítmica do programa.
+
+
+\section{Estudos de caso} \label{sec:estudos-caso}
+
+Para avaliar e mostrar as capacidades da biblioteca, apresentamos a seguir dois
+estudos de caso: um envolve uma sugestão de reescrita do código, enquanto o outro 
+trata da verificação da presença de construções não autorizados na solução de um 
+aluno.
+
+\subsection{Validação da resposta do aluno}
+
+Considere uma questão que pede ao aluno para implementar um programa que calcule
+o fatorial de um número inteiro \(n\) digitado pelo usuário. Definimos como 
+\(n!\) (\(n\) fatorial) a multiplicação sucessiva de \(n\) por seus antecessores 
+até chegar em 1. 
+A equação do fatorial pode ser definida como \(n! = n \times n-1 \times n-2 
+\times \ldots 3 \times 2 \times 1\). A solução esperada é que o aluno utilize
+um laço de repetição, como o \textit{while}, para implementar a multiplicação
+sucessiva dos números, como no código apresentado a seguir:
+
+\begin{lstlisting}[language=Python]
+  n = int(input("Digite um numero: "))
+  fatorial = 1
+  contador = n
+  while (contador >= 1):
+    fatorial = fatorial * contador
+    contador = contador - 1
+  print(f"{n}! = {fatorial}")
+\end{lstlisting}
+
+Porém, dentro da biblioteca \texttt{math} de Python, existe a função 
+\texttt{factorial}, que dado um número inteiro \(n\), retorna o resultado de \(n!\).
+Por isso, alguns alunos acabam importando a biblioteca e usando a função pronta,
+contornando o objetivo do exercício, que é praticar o laço de repetição.
+Dessa forma, o padrão apresentado a seguir é capaz de identificar a presença de
+uma chamada para a função.
+
+% TODO: não tô gostando de usar o listing, pq não consigo colocar uma label nele, mas não sei o que usar no lugar
+%   o ambiente de matemática tb não fica legal, mas pelo menos aceita o epsilon
+\[
+  \begin{array}{ll}
+    pattern factorial\_call : & function\_call := (identifier := "math.factorial") @space "(" @space \#v2:expr_list? ")" \epsilon \\
+    pattern space : & space := " "*
+    
+  \end{array}
+\]
+
+Onde:
+\begin{itemize}
+  \item A palavra \textit{pattern} inicializa a declaração de um padrão.
+  \item \textit{factorial\_call} é o identificador do padrão.
+  \item \textit{function\_call} indica o tipo do padrão, i.e., com quais comandos 
+    ele vai casar.
+  \item \textit{(identifier := "math.factorial")} significa que o nome da função 
+    deve ser \textit{math.factorial}.
+  \item \textit{@space} faz referência ao padrão de nome \textit{space}.
+  \item \textit{``(''} indica que deve casar com a string ``(''.
+  \item \textit{\#v2:expr\_list?} significa que a lista de argumentos da função
+    será armazenada na variável \textit{v2}. O \textit{?} indica que essa lista
+    de argumentos é opcional.
+  \item \textit{\(\epsilon\)} indica que não deve ter nada em sequência da chamada.
+\end{itemize}
+
+Assim, se o padrão casar, significa que o aluno está usando a função 
+\textit{factorial} da biblioteca \textit{math} em vez de escrever o laço de
+repetição, contornando o objetivo original do exercício.
+
+\subsection{Reescrita de código}
+
+Considere agora o seguinte trecho de código:
+
+\begin{lstlisting}[language=Python]
+  if not a:
+    print("A condicao 'a' e falsa")
+  else:
+    print("A condicao 'a' e verdadeira")
+\end{lstlisting}
+
+Embora o código não apresente nenhum erro, ele pode ser refatorado, com o intuito 
+de melhorar a estrutura e, consequentemente, entendimento do código, ao remover o 
+\textit{not} da condição do \texttt{if} e trocar os blocos de comando do 
+\texttt{if} e do \texttt{else}, da seguinte forma:
+
+\begin{lstlisting}[language=Python]
+  if a:
+    print("A condicao 'a' e verdadeira")
+  else:
+    print("A condicao 'a' e falsa")
+\end{lstlisting}
+
+Ao identificar esse tipo de construção no código do aluno, é possível sugerir
+uma reescrita ao aluno, explicando o motivo da sugestão e a melhoria que ela
+traria ao código. Os padrões apresentados a seguir representam uma forma de
+detectar a construção apresentada anteriormente e como fazer a reescrita.
+
+\[
+  \begin{array}{ll}
+    pattern if\_def : & if\_stmt := (("if" @space @expr ":") \#ifBlock:statement*) @elseBlock \\
+    pattern elseBlock : & else\_block := ("else" @space ":") \#elseBlock:statement* \\
+  
+    pattern subst : & if\_stmt := (("if" @space \#condition:expression ":") \#elseBlock:statement*) @elseBlock2 \\
+    pattern elseBlock2 : & else\_block := ("else" @space ":") \#ifBlock:statement* \\
+  
+    pattern expr    : & expression := @orExpr \epsilon \\
+    pattern orExpr  : & or\_expr    := @andExpr \epsilon \\
+    pattern andExpr : & and\_expr   := "not" @space \#condition:comparison \\
+  
+    pattern space : & space := " "*
+  \end{array}
+\]
+
+Onde:
+\begin{itemize}
+  \item O padrão \textit{if\_def} casa quando encontrar um if que tem como
+    condição uma expressão negada.
+  \item O padrão \textit{subst} representa a reescrita que será sugerida ao
+    aluno.
+\end{itemize}
+
+As variáveis \(\#condition:expression\), \(\#ifBlock:statement*\) e \(\#elseBlock:statement*\) 
+no padrão \textit{if\_def} capturam, respectivamente, a expressão na condição do 
+\texttt{if}, todo o bloco  de comandos do \texttt{if} e todo o bloco de comandos
+do \texttt{else}.
+A forma com que essas variáveis aparecem no padrão \textit{subst} indica como a
+reescrita será realizada. Nesse padrão, é possível ver que o \textit{not} da condição
+não aparece mais, enquanto a posição das variáveis dos blocos foram trocadas.
+Assim, é possível usar o que foi capturado pelas variáveis no padrão \textit{if\_def}
+e colocar nos locais onde as variáveis aparecem no padrão \textit{subst}.
+Por fim, apresentamos a reescrita ao aluno, junto da explicação, e fazemos a 
+sugestão para melhoria de sua solução.
+
+\section{Trabalhos relacionados}
+
+Estudantes aprendem melhor vendo representações de um conceito, sejam textuais, 
+visuais ou animadas. Os livros didáticos podem oferecer as representações 
+textuais e algumas visuais, enquanto os softwares podem fornecer representações 
+visuais e animadas. No entanto, apenas observar não é suficiente, os alunos 
+devem ser capazes de interagir com o conceito de alguma forma e receber 
+\textit{feedback} para verificar sua compreensão do conceito 
+\cite{rodger2002-hands-on-visualization}.
+Dessa forma, avaliar a corretude da solução do aluno e oferecer sugestões de
+melhoria podem contribuir significativamente no aprendizado.
+
+\cite{pelz2012-mecanismo-correcao-automatica} apresenta um mecanismo de correção
+automática de programas com um processo de 4 etapas, em que é são feitas as 
+verificações da sintaxe, da presença de comandos obrigatórios, da adequação da
+estrutura do programa do aluno e dos valores de saída do programa diante de um
+conjunto de testes. A partir das observações que fizeram, concluíram que o 
+\textit{feedback} sobre a falta de comandos obrigatórios no programa deve ser
+utilizado com cuidado, pois ao ser apresentado ao aluno sem nenhuma precaução
+é possível que este descubra a estrutura da solução do problema simplesmente
+pelas dicas do mecanismo de correção, sem mesmo refletir sobre como solucionar
+o problema. Além disso, o mecanismo de correção automática dificilmente seria 
+útil para avaliação de exercícios de programação mais complexos do que aqueles 
+apresentados nas primeiras semanas de aula, já que neste caso a quantidade de 
+variáveis e a complexidade das estruturas dos programas inviabilizam a definição 
+dos esquemas de correção da maneira como estão propostos neste artigo.
+
+\cite{moreira2009-ambiente-ensino} cita diversos benefícios para o professor ao
+usar um ambiente para ensino de programação com \textit{feedback} automático, 
+como: menor esforço, uma vez que conta com o auxílio da ferramenta, melhor 
+administração dos estudantes e de suas tarefas, melhor rastreamento individual 
+dos estudantes, melhor qualidade de ensino, devido o maior tempo de prática, 
+mais tempo para contato com os estudantes. A utilização de ambientes para 
+avaliação automática de exercícios tem sido uma prática comum em universidades
+e auxiliam no cotidiano de uma disciplina. Uma vez que o aprendizado de
+programação é essencial na carreira do estudante de computação, é necessário
+que este consiga adquirir os fundamentos básicos, sendo capaz de avaliar, pensar
+logicamente e desenvolver seus pŕoprios algoritmos. Por se tratar de uma disciplina
+em que a prática em laboratório é fundamental no desenvolvimento destas habilidades,
+é desejável que o professor esteja atento à sua evolução. Contudo, devido às 
+turmas de programação geralmente serem compostas por muitos alunos e tempo 
+reduzido de aulas, nem sempre isso é possível. Por isso, uma forma de avaliar e
+fornecer \textit{feedback} aos alunos pode auxiliar no acompanhamento dessas
+habilidades.
+
+As principais abordagens para avaliação automática de um exercício de programação
+são a análise dinâmica e a análise estática \cite{oliveira2015-avaliacao-automatica-programacao}. 
+A análise dinâmica compara o resultado produzido ao executar o programa do aluno 
+com um gabarito, chamado de solução esperada e geralmente produzida por um 
+programa escrito pelo professor, para avaliar a corretude, funcionalidade e
+eficiência da solução em vários casos de teste. Caso aprovados, o exercício 
+recebe nota máxima e, caso contrário, nota mínima para cada caso.
+A análise estática avalia a escrita do código-fonte, observando itens como 
+erros de programação de ordem sintática como erros sintáticos, semânticos,
+estrutural e estilo de programação, além de detectar plágio. Assim, ela 
+costuma contemplar o processo de construção do programa.
+
+Neste trabalho, foi apresentado um mecanismo para análise estática do programa 
+doaluno, com um foco em coibir o uso de estruturas e construções avançadas ou 
+não autorizadas pelos alunos, além de fornecer dicas e sugestões para melhorar
+a estrutura algorítmica da solução desenvolvida. Utilizando diferentes gramáticas,
+é possível restringir os recursos aos que foram ensinados na disciplina, 
+disponibilizando mais recursos à medida que o conteúdo avança ou o quando o 
+professor julgar adequado. Com o uso dos padrões, é possível garantir que 
+determinados comandos e estruturas estão sendo usadas ou não, por exemplo,
+para que o aluno use uma estrutura adequada ao problema e não tente burlar o
+objetivo da atividade. Além disso, é possível detectar e sugerir melhorias
+na estrutura do código, explicando seu motivo e benefícios.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% A partir daqui é o código do template da SBC
+
+% \section{General Information}
+
+% All full papers and posters (short papers) submitted to some SBC conference,
+% including any supporting documents, should be written in English or in
+% Portuguese. The format paper should be A4 with single column, 3.5 cm for upper
+% margin, 2.5 cm for bottom margin and 3.0 cm for lateral margins, without
+% headers or footers. The main font must be Times, 12 point nominal size, with 6
+% points of space before each paragraph. Page numbers must be suppressed.
+
+% Full papers must respect the page limits defined by the conference.
+% Conferences that publish just abstracts ask for \textbf{one}-page texts.
+
+% \section{First Page} \label{sec:firstpage}
+
+% The first page must display the paper title, the name and address of the
+% authors, the abstract in English and ``resumo'' in Portuguese (``resumos'' are
+% required only for papers written in Portuguese). The title must be centered
+% over the whole page, in 16 point boldface font and with 12 points of space
+% before itself. Author names must be centered in 12 point font, bold, all of
+% them disposed in the same line, separated by commas and with 12 points of
+% space after the title. Addresses must be centered in 12 point font, also with
+% 12 points of space after the authors' names. E-mail addresses should be
+% written using font Courier New, 10 point nominal size, with 6 points of space
+% before and 6 points of space after.
+
+% The abstract and ``resumo'' (if is the case) must be in 12 point Times font,
+% indented 0.8cm on both sides. The word \textbf{Abstract} and \textbf{Resumo},
+% should be written in boldface and must precede the text.
+
+% \section{CD-ROMs and Printed Proceedings}
+
+% In some conferences, the papers are published on CD-ROM while only the
+% abstract is published in the printed Proceedings. In this case, authors are
+% invited to prepare two final versions of the paper. One, complete, to be
+% published on the CD and the other, containing only the first page, with
+% abstract and ``resumo'' (for papers in Portuguese).
+
+% \section{Sections and Paragraphs}
+
+% Section titles must be in boldface, 13pt, flush left. There should be an extra
+% 12 pt of space before each title. Section numbering is optional. The first
+% paragraph of each section should not be indented, while the first lines of
+% subsequent paragraphs should be indented by 1.27 cm.
+
+% \subsection{Subsections}
+
+% The subsection titles must be in boldface, 12pt, flush left.
+
+% \section{Figures and Captions}\label{sec:figs}
+
+
+% Figure and table captions should be centered if less than one line
+% (Figure~\ref{fig:exampleFig1}), otherwise justified and indented by 0.8cm on
+% both margins, as shown in Figure~\ref{fig:exampleFig2}. The caption font must
+% be Helvetica, 10 point, boldface, with 6 points of space before and after each
+% caption.
+
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=.5\textwidth]{fig1.jpg}
+% \caption{A typical figure}
+% \label{fig:exampleFig1}
+% \end{figure}
+
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=.3\textwidth]{fig2.jpg}
+% \caption{This figure is an example of a figure caption taking more than one
+%   line and justified considering margins mentioned in Section~\ref{sec:figs}.}
+% \label{fig:exampleFig2}
+% \end{figure}
+
+% In tables, try to avoid the use of colored or shaded backgrounds, and avoid
+% thick, doubled, or unnecessary framing lines. When reporting empirical data,
+% do not use more decimal digits than warranted by their precision and
+% reproducibility. Table caption must be placed before the table (see Table 1)
+% and the font used must also be Helvetica, 10 point, boldface, with 6 points of
+% space before and after each caption.
+
+% \begin{table}[ht]
+% \centering
+% \caption{Variables to be considered on the evaluation of interaction
+%   techniques}
+% \label{tab:exTable1}
+% \includegraphics[width=.7\textwidth]{table.jpg}
+% \end{table}
+
+% \section{Images}
+
+% All images and illustrations should be in black-and-white, or gray tones,
+% excepting for the papers that will be electronically available (on CD-ROMs,
+% internet, etc.). The image resolution on paper should be about 600 dpi for
+% black-and-white images, and 150-300 dpi for grayscale images.  Do not include
+% images with excessive resolution, as they may take hours to print, without any
+% visible difference in the result. 
+
+% \section{References}
+
+% Bibliographic references must be unambiguous and uniform.  We recommend giving
+% the author names references in brackets, e.g. \cite{knuth:84},
+% \cite{boulic:91}, and \cite{smith:99}.
+
+% The references must be listed using 12 point font size, with 6 points of space
+% before each reference. The first line of each reference should not be
+% indented, while the subsequent should be indented by 0.5 cm.
+
+\bibliographystyle{sbc}
+\bibliography{sbc-template}
+
+\end{document}

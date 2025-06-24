@@ -1,0 +1,268 @@
+\chapter{Methodology}\label{chap:methodology}
+
+% \textbf{-- TODO: árvores --}
+% \begin{itemize}
+%     \item Síntaxe (da própria PEG ou da árvore de parse?)
+%     \item Relação de tipagem: \(\Gamma \vdash t : e\)
+% \end{itemize}
+
+Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, the meta-variable \(a \in \Sigma\) an
+arbitrary alphabet symbol, \(A \in V\) a variable and \(e\) a parsing expression.
+The following context-free grammar defines the syntax of a parse tree:
+\[
+   \begin{array}{lcl}
+      t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, \hat{A} \, 
+                    \mid \, \langle t_1, t_2 \rangle\,
+                    \mid \, L \: t \, \mid \, R \: t \, \mid \, [t] \, 
+                    \mid \, \eta \\
+   \end{array}
+\]
+Where \(\hat{\epsilon}\) represents that a parsing expression resulted in 
+success without consuming any symbol of its input, \(\hat{a}\) represents that
+the parsing expression consumed the symbol \(a\) from the input, \(\hat{A}\)
+represents that the parsing of the rule \((A, e) \in R\) was succeesful, 
+\(\langle t_1, t_2 \rangle\) represents that a sequence of parsing expressions 
+succeeded, 
+\(L \: t\) and \(R \: t\) both represent that a branch of an ordered choice succeeded, 
+with \(L \: t\) for the left one and \(R \: t\) for the right one,
+% \(L \: t\) represents that the first expression in an ordered choice 
+% succeeded, \(R \: t\) represents that the second expression in an ordered choice 
+% succeeded, 
+\([t]\) is a list of trees and \(\eta\) represents that a not 
+predicate was successful.
+
+The generation of tress by execution of parsing expressions is defined by an 
+inductively defined judgment that relates pairs formed by a parsing expression 
+and an input string to pairs formed by the generated tree and the remaining string.
+Notation \((e,s_ps_r) \Rightarrow_G (t,s_r)\) denote that parsing expression \(e\)
+consumes the prefix \(s_p\) and generates the parse tree \(t\) from the input string
+\(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Rightarrow_G \bot\) 
+denote the fact that \(s\) cannot be parsed by \(e\). We let meta-variable \(r\) 
+denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or 
+\(\bot\). We say that an expression \(e\) fails if its execution over an input 
+produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics} 
+defines the PEG semantics for tree generation.
+
+\begin{figure*}[!ht]
+   \centering
+   \[
+      \begin{array}{cccc}
+         \infer[_{\{Eps\}}]{(\epsilon,s) \Rightarrow_G (\hat{\epsilon},s)}{} &
+         \infer[_{\{ChrS\}}]{(a,as_r) \Rightarrow_G (\hat{a},s_r)}{}  &
+         \infer[_{\{ChrF\}}]{(a,bs_r) \Rightarrow_G \bot}{a \neq b} &
+         \infer[_{\{Var\}}]{(A,s) \Rightarrow_G t}
+                           {A \leftarrow e \in R & (e,s) \Rightarrow_G t} \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Cat_{S1}\}}]{(e_1\,e_2,s_{p_1}s_{p_2}s_r) \Rightarrow_G (\langle t_1,t_2 \rangle, s_r)}
+                                 {(e_1,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
+                                 (e_2,s_{p_2}s_r)\Rightarrow_G (t_2,s_r)}
+         } &
+         \multicolumn{2}{c}{
+            \infer[_{\{Cat_{F2}\}}]{(e_1\,e_2,s_ps_r) \Rightarrow_G \bot}
+                                 { (e_1,s_ps_r) \Rightarrow_G (t_1,s_r) &
+                                    (e_2,s_r) \Rightarrow_G \bot}} \\ \\
+         \infer[_{\{Cat_{F1}\}}]{(e_1\,e_2,s)\Rightarrow_G \bot}{(e_1,s) \Rightarrow_G \bot} &
+         \infer[_{\{Alt_{S1}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G (L \, t,s_r)}
+                                {(e_1,s_p\,s_r)\Rightarrow_G (t,s_r)} &
+         \multicolumn{2}{c}{
+            \infer[_{\{Alt_{S2}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G R \, t}
+                                  {(e_1,s_p\,s_r)\Rightarrow_G \bot &
+                                   (e_2,s_p\,s_r)\Rightarrow_G t}
+         } \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Rightarrow_G ([t_1, t_2],s_r)}
+                                 {(e,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
+                                  (e^\star, s_{p_2}s_r) \Rightarrow_G (t_2,s_r)}
+         } &
+         \multicolumn{2}{c}{
+            \infer[_{\{Star_{end}\}}]{(e^\star,s) \Rightarrow_G (\hat{\epsilon},s)}
+                                    {(e,s) \Rightarrow_G \bot}} \\ \\
+         \multicolumn{2}{c}{
+            \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Rightarrow_G \bot}
+                               {(e,s_p\,s_r) \Rightarrow_G (t,s_r)}
+         } &
+         \infer[_{\{Not_S\}}]{(!\,e,s) \Rightarrow_G (\eta),s)}
+         {(e,s) \Rightarrow_G \bot}
+           &
+         \infer[_{\{ChrNil\}}]{(a,\epsilon) \Rightarrow_G \bot}{}
+      \end{array}
+   \]
+   \caption{Parsing expressions operational semantics that produces a tree.}
+   \label{fig:peg-tree-semantics}
+\end{figure*}
+
+\begin{definition}[Type of a parse tree]
+    We say that a parse tree \(t\) has type \(e\), \(t : e\), when \(t\) is generated 
+    by a parsing expression \(e\), i.e., when \((e, s_ps_r) \Rightarrow_G (t, s_r)\).
+\end{definition}
+
+% \textbf{-- TODO: Casamento de padrão --}
+% \begin{itemize}
+%     \item Síntaxe do padrão
+%     \item Relação de casamento -> \(G ; p \vdash t \leadsto S\),
+%         onde \(G\) é uma gramática, \(p\) é um padrão e \(S\) é uma lista de casamentos.
+%     \item Coerção de padrão -> \(p : e_1 \to p : e_1 / e_2\)
+%         Notação com o símbolo do Pierce: 
+%         \[
+%             e_1 <: e_1 / e_2
+%         \]
+%         \[
+%             e_2 <: e_1 / e_2
+%         \]
+%         \[
+%             G ; e_1 ; {e_1}' \vdash p \leadsto p'
+%         \]
+%         \[
+%             p : e_1 \to p' : {e_1}'
+%         \]
+%         em que \(e_1 <: {e_1}'\)
+% \end{itemize}
+
+% A collection of patterns is defined as a tuple \((V, \Sigma, P)\) where \(V\) is 
+% a finite set of variables, \(\Sigma\) is the alphabet, and \(P\) is the finite 
+% set of patterns. Each pattern \(p \in P\) is a tuple \((A, e)\), where
+% \(A \in V\) and \(e\) is a pattern expression. 
+% We let the meta-variable \(a\) denote an arbitrary alphabet symbol, \(A\) a 
+% variable, \(M\) a variable and 
+
+% \(n\) is the pattern identifier and \(p\)
+% is a pattern expression.
+
+Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
+of identified patterns, \(U\) a finite set of variables, the meta-variable 
+\(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and 
+\(e\) a parsing expression.
+Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
+and \(p\) is a pattern expression.
+The following context-free grammar defines the syntax of a pattern expression:
+\[
+   \begin{array}{lcl}
+      p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
+                \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p 
+                \mid \, M\, \mid \, I\,\\
+   \end{array}
+\]
+Where \(\epsilon\) is a pattern that matches with the empty string and is always
+successful, \(a\) matches only with the symbol \(a\), \(A\) matches with a subtree
+of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both \(p_1\) and \(p_2\)
+matches sequentially, \(p_1\,/\,p_2\) matches if one of \(p_1\) or \(p_2\) matches,
+\(p^\star\) will try to match \(p\) sequentially as many times as possible, \(!p\)
+matches only if \(p\) does not matches, \(M\) is a meta-variable that, given a variable
+\(A\), matches with any tree \(t : e\) where \((A, e) \in R\) and \(I\) is a reference
+to another pattern expression \(p'\) where \((I, p') \in \Theta\).
+
+Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
+
+\begin{figure*}[!ht]
+    \centering
+    \[
+        \begin{array}{ccc}
+            \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
+            \infer[_{\{ChrS\}}]{\Theta, G \vdash a}{} &
+            \infer[_{\{Var\}}]{\Theta, G \vdash A}{G = (V, \Sigma, R, e_s) & A \in V}
+            \\ \\
+            \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
+            \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
+            \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p} 
+            \\ \\
+            \infer[_{\{Not\}}]{\Theta, G \vdash !^\star}{\Theta, G \vdash p} &
+            \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{G = (V, \Sigma, R, e_s) & \exists e. M : e \land A \leftarrow e \in R} &
+            \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
+        \end{array}
+    \]
+    \caption{Pattern expressions semantics.}
+    \label{fig:pattern-semantics}
+\end{figure*}
+
+\begin{definition}[Valid pattern with respect to a tree]
+    We say that a pattern \(p\) is valid with respect to a tree \(t\), \(p \sim t\),
+    if and only if \(\exists e . p : e \land t : e\).
+\end{definition}
+
+We also present a type coercion for parsing expressions.
+\begin{figure*}[ht]
+    \[
+        \begin{array}{ccc}
+            \infer[_{\{Reflexive\}}]{e <: e}{} &
+            \multicolumn{2}{c}{
+                \infer[_{\{Transitive\}}]{e_1 <: e_3}{e_1 <: e_2 & e_2 <: e_3}
+            } \\ \\
+
+            \infer[_{\{Alt_Left\}}]{e_1 <: e_1 / e_2}{} &
+            \infer[_{\{Alt_Right\}}]{e_2 <: e_1 / e_2}{} &
+            \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1} 
+        \end{array}
+    \]
+    \centering
+    \caption{Type coercions}
+    \label{fig:type-coercion}
+\end{figure*}
+
+
+\begin{figure*}[ht]
+    \[
+        \begin{array}{ccc}
+            \multicolumn{3}{c}{
+                \infer[_{Pattern}]
+                    {p' \sim t}
+                    {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e1}
+            }
+        \end{array}
+    \]
+    \centering
+    \caption{Pattern coercion}
+    \label{fig:pattern-coercion}
+\end{figure*}
+Where \(C :: Pattern \to Type Coercion \to Pattern\) and is defined as follows:
+\[
+    \begin{array}{lcl}
+        C(p:e_1, e_1 <: e_1 \,/\, e_2) & = & p \,/\, !\epsilon \\
+        C(p:e_1, e_2 <: e_1 \,/\, e_2) & = & !\epsilon \,/\, p \\
+        % C(\epsilon:e, e <: e^\star) & = & \epsilon \\
+        % TODO: Estou em dúvida de como escrever a parte da coerção da sequência
+        C(p:e, e <: e^\star) & = & p \,/\, \epsilon \\
+        C((p_1:e)\,(p_2:e), e <: e^\star) & = & C(p_1:e, e <: e^\star) \, C(p_2:e, e <: e^\star) \\
+        % TODO: Provavelmente está faltando a parte da chamada recursiva
+    \end{array}
+\]
+
+
+
+\begin{figure*}[ht]
+    \[
+        \begin{array}{ccc}
+            \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
+
+            \infer[_{\{ChrS\}}]{a \sim a}{} &
+
+            \infer[_{\{Var\}}]{A \sim A}{} \\ \\
+
+            \infer[_{\{Seq\}}]
+                {p_1\:p_2 \sim t_1\:t_2}
+                {p_1 \sim t_1 & p_2 \sim t_2} &
+
+            \infer[_{\{Choice\}}]
+                {p_1 / p_2 \sim t_1 / t_2}
+                {p_1 \sim t_1 & p_2 \sim t_2} &
+
+            \infer[_{\{Star\}}]
+                {p^\star \sim [t]}
+                {p \sim t} \\ \\
+
+            \infer[_{\{Not\}}]
+                {!\,p \sim !\,t}
+                {p \sim t} &
+
+            \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
+
+            % Não tem definição de casamento pra uma referência, 
+            % pq ela não existe durante o casamento
+            \\
+        \end{array}
+    \]
+    \centering
+    \caption{Matching rules}
+    \label{fig:matching-rules}
+\end{figure*}
+
+\cleardoublepage

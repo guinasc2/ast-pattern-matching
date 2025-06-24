@@ -1,0 +1,84 @@
+%Template criado para o PPGCC - UFOP
+%e adaptado para DECOM - UFOP
+%Baseado no template da COPPE - UFRJ
+%Modificado por Mateus Coelho Silva, M.Sc.
+
+\documentclass[mscexam,numbers]{coppe}
+%tcc: trabalho de conclusão de curso
+%mscexam: qualificação de mestrado
+%msc: mestrado
+%dscexam: qualificação de doutorado
+%dsc: doutorado
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{stfloats}
+\usepackage{hyperref}
+\usepackage[intoc]{nomencl}
+\usepackage{etoolbox}
+\usepackage{subcaption}
+\usepackage[final]{pdfpages}
+\usepackage{proof}
+\usepackage{amsfonts}
+\usepackage{enumitem}
+\usepackage{tikz}
+
+\usetikzlibrary{trees}
+\usetikzlibrary{shapes}
+
+\captionsetup{compatibility=false}
+
+% \theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\makelosymbols
+\makeloabbreviations
+\makenomenclature
+
+\begin{document}
+  \title{---}
+  \foreigntitle{---}
+  \author{Guilherme Augusto Anício Drummond}{do Nascimento}
+  \advisor{Prof.}{Rodrigo Geraldo}{Ribeiro}{Dr.}
+  
+  \examiner{Prof.}{Rodrigo Geraldo}{Ribeiro}{Dr.}
+  \examiner{Prof.}{---}{Dr.}
+  \department{DECOM}
+
+  \keyword{---}
+  \maketitle
+  %\includepdf{ficha.pdf}
+  %\includepdf{ata.pdf}
+
+  \include{pre-text/dedic}
+  \include{pre-text/thanks}
+  \include{abstract/resumo}
+  \include{abstract/abstract}
+  \renewcommand{\nomname}{Lista de Abreviações}
+  %Nova abreviação: \nomenclature{HW}{Hardware} 
+  \tableofcontents
+  \listoffigures
+  \listoftables
+  \printlosymbols
+  \printnomenclature
+  
+
+  \mainmatter
+  \include{chapters/introducao}
+  %\newpage\null\thispagestyle{empty}\newpage
+  \include{chapters/revisao}
+  %\newpage\null\thispagestyle{empty}\newpage
+  \include{chapters/desenvolvimento}
+  \cleardoublepage
+  \include{chapters/resultados}
+  \cleardoublepage
+  \include{chapters/conclusoes}
+
+  \backmatter
+  \bibliographystyle{coppe-unsrt}
+  \bibliography{thesis}
+
+  %\appendix
+  %\include{appenA}
+\end{document}

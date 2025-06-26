@@ -159,14 +159,14 @@ Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
         \begin{array}{ccc}
             \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
             \infer[_{\{ChrS\}}]{\Theta, G \vdash a}{} &
-            \infer[_{\{Var\}}]{\Theta, G \vdash A}{G = (V, \Sigma, R, e_s) & A \in V}
+            \infer[_{\{Var\}}]{\Theta, G \vdash A}{A \in V}
             \\ \\
             \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
             \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
             \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p} 
             \\ \\
-            \infer[_{\{Not\}}]{\Theta, G \vdash !^\star}{\Theta, G \vdash p} &
-            \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{G = (V, \Sigma, R, e_s) & \exists e. M : e \land A \leftarrow e \in R} &
+            \infer[_{\{Not\}}]{\Theta, G \vdash !p}{\Theta, G \vdash p} &
+            \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{\exists e. M : e \land A \leftarrow e \in R} &
             \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
         \end{array}
     \]
@@ -188,16 +188,32 @@ We also present a type coercion for parsing expressions.
                 \infer[_{\{Transitive\}}]{e_1 <: e_3}{e_1 <: e_2 & e_2 <: e_3}
             } \\ \\
 
-            \infer[_{\{Alt_Left\}}]{e_1 <: e_1 / e_2}{} &
-            \infer[_{\{Alt_Right\}}]{e_2 <: e_1 / e_2}{} &
+            \infer[_{\{Alt_{Left}\}}]{e_1 <: e_1 / e_2}{} &
+            \infer[_{\{Alt_{Right}\}}]{e_2 <: e_1 / e_2}{} &
             \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1} 
         \end{array}
     \]
     \centering
-    \caption{Type coercions}
-    \label{fig:type-coercion}
+    \caption{Subtype relations for parsing expressions}
+    \label{fig:subtype-relations}
 \end{figure*}
 
+% TODO: não lembro o nome que o Rodrigo usou
+We present the syntax for terms of subtyping.
+\[
+   \begin{array}{lcl}
+      p & \to & \epsilon \, \mid \, a \, \mid \, A \, 
+                    \mid \,  p_1\:p_2 \, \mid \,  p_1 / p_2 \,
+                    \mid \, L\:p \, \mid \, R\:p \, 
+                    \mid \, p^\star \, \mid \, [p] \, 
+                    \mid \, !\,p \, \mid \, M \\
+   \end{array}
+\]
+Of note, are the production rules \(L\:p\), \(R\:p\) and \([p]\) which represents,
+respectively, the proof that the left expression in a choice operator is a subtype
+of the choice, the proof that the right expression in a choice operator is a subtype
+of the choice, and the proof that a list (possibly empty) of patterns is a subtype 
+of the \(\star\) operator.
 
 \begin{figure*}[ht]
     \[
@@ -205,7 +221,7 @@ We also present a type coercion for parsing expressions.
             \multicolumn{3}{c}{
                 \infer[_{Pattern}]
                     {p' \sim t}
-                    {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e1}
+                    {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e'}
             }
         \end{array}
     \]
@@ -213,56 +229,341 @@ We also present a type coercion for parsing expressions.
     \caption{Pattern coercion}
     \label{fig:pattern-coercion}
 \end{figure*}
-Where \(C :: Pattern \to Type Coercion \to Pattern\) and is defined as follows:
+Where \(C\) is a resursively defined function that receives a pattern and a proof
+that the pattern is valid and returns a corrected pattern and is defined as follows:
 \[
-    \begin{array}{lcl}
-        C(p:e_1, e_1 <: e_1 \,/\, e_2) & = & p \,/\, !\epsilon \\
-        C(p:e_1, e_2 <: e_1 \,/\, e_2) & = & !\epsilon \,/\, p \\
-        % C(\epsilon:e, e <: e^\star) & = & \epsilon \\
-        % TODO: Estou em dúvida de como escrever a parte da coerção da sequência
-        C(p:e, e <: e^\star) & = & p \,/\, \epsilon \\
-        C((p_1:e)\,(p_2:e), e <: e^\star) & = & C(p_1:e, e <: e^\star) \, C(p_2:e, e <: e^\star) \\
-        % TODO: Provavelmente está faltando a parte da chamada recursiva
+    \begin{array}{ll}
+        C(\epsilon, \epsilon)             & = \epsilon \\
+        C(a, a)                           & = a \\
+        C(a, a')                          & = \bot, if a \neq a' \\
+        C((A p), (A p'))                  & = A C(p, p') \\
+        C((A p), (A' p'))                 & = \bot, if A \neq A' \\
+        C(M, M)                           & = M \\
+        C(M, M')                          & = \bot, if M \neq M' \\
+        C(p_1\:p_2, p_1'\:p_2')           & = C(p_1, p_1')\:C(p_2, p_2') \\
+        C(\epsilon, xs))                  & = [] \\
+        C(p, [x])                         & = [C(p, x)] \\
+        C(p_1\:p_2, x:xs)                 & = C(p_1, x) \: C(p_2, xs) \\
+        C(p_1 \,/\, p_2, p_1' \,/\, p_2') & = C(p_1, p_1') / C(p_2, p_2') \\
+        C(p, L p')                        & = C(p, p') / !\,\epsilon \\
+        C(p, R p')                        & = !\,\epsilon / C(p, p') \\
+        C(p^\star, {p'}^\star)            & = (C(p, p'))^\star \\
+        C(!\,p, !\,p')                    & = !\,C(p, p') \\
+        
+        % C(p:e_1,\: e_1 <: e_1 \,/\, e_2) & = & p \,/\, !\epsilon \\
+        % C(p:e_2,\: e_2 <: e_1 \,/\, e_2) & = & !\epsilon \,/\, p \\
+        % % C(\epsilon:e, e <: e^\star) & = & \epsilon \\
+        % % TODO: Estou em dúvida de como escrever a parte da coerção da sequência
+        % C(p:e,\: e <: e^\star) & = & p \,/\, \epsilon \\
+        % C((p_1:e)\,(p_2:e),\: e <: e^\star) & = & C(p_1:e, e <: e^\star) \, C(p_2:e, e <: e^\star) \\
+        % % TODO: Provavelmente está faltando a parte da chamada recursiva
     \end{array}
 \]
 
 
-
+% TODO: Escrever regras de casamento
 \begin{figure*}[ht]
     \[
         \begin{array}{ccc}
-            \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
+            % \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
 
-            \infer[_{\{ChrS\}}]{a \sim a}{} &
+            % \infer[_{\{ChrS\}}]{a \sim a}{} &
 
-            \infer[_{\{Var\}}]{A \sim A}{} \\ \\
+            % \infer[_{\{Var\}}]{A \sim A}{} \\ \\
 
-            \infer[_{\{Seq\}}]
-                {p_1\:p_2 \sim t_1\:t_2}
-                {p_1 \sim t_1 & p_2 \sim t_2} &
+            % \infer[_{\{Seq\}}]
+            %     {p_1\:p_2 \sim t_1\:t_2}
+            %     {p_1 \sim t_1 & p_2 \sim t_2} &
 
-            \infer[_{\{Choice\}}]
-                {p_1 / p_2 \sim t_1 / t_2}
-                {p_1 \sim t_1 & p_2 \sim t_2} &
+            % \infer[_{\{Choice\}}]
+            %     {p_1 / p_2 \sim t_1 / t_2}
+            %     {p_1 \sim t_1 & p_2 \sim t_2} &
 
-            \infer[_{\{Star\}}]
-                {p^\star \sim [t]}
-                {p \sim t} \\ \\
+            % \infer[_{\{Star\}}]
+            %     {p^\star \sim [t]}
+            %     {p \sim t} \\ \\
 
-            \infer[_{\{Not\}}]
-                {!\,p \sim !\,t}
-                {p \sim t} &
+            % \infer[_{\{Not\}}]
+            %     {!\,p \sim !\,t}
+            %     {p \sim t} &
 
-            \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
+            % \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
 
-            % Não tem definição de casamento pra uma referência, 
-            % pq ela não existe durante o casamento
-            \\
+            % % Não tem definição de casamento pra uma referência, 
+            % % pq ela não existe durante o casamento
+            % \\
         \end{array}
     \]
     \centering
     \caption{Matching rules}
     \label{fig:matching-rules}
 \end{figure*}
+
+
+\section{Case studies}
+
+To evaluate and demonstrate the capabilities of the tool, we present below
+some case studies: the generation of a call graph, a suggestion for rewriting 
+the code, and a verification of the presence of specific constructions in the 
+code. All case studies use the PEG shown in Appendix~\ref{append:python-peg},
+which accepts .
+
+\subsection{Call graph generation}
+
+In this case study we try to extract a call graph from a given source code
+and to do so, we will need two different patterns: one that matches with all
+definitions of functions and one that matches with all functions calls.
+
+\[
+    \begin{array}{l}
+        pattern definition : function\_def := ("def" @space \#name:identifier "(" @space \#p:id\_list? ")" @space ":") \#block:statement*
+        \\
+        pattern call : function\_call := \#name:identifier @space "(" @space \#v:expr\_list? ")" \epsilon
+        \\
+        pattern space : space := " "*
+        \\
+    \end{array}
+\]
+
+The syntax \(pattern \: name : type \, := expression\) represents a pattern 
+identified by \(name\) that matches trees with type \(type\) and \(expression\)
+specifies how it will match. \(@name\) denotes a reference to another pattern
+and \(\#var:type\) denotes a variable that matches with trees of type \(type\).
+\textit{\(\epsilon\)} indicates that there must be nothing following the call.
+
+The pattern \(definition\) matches with any function definition, storing the
+function identifier, parameters and function body, respectively, in variables \(name\),
+\(p\) and \(block\). The pattern \(function\_call\) matches with any function 
+call, storing the function name and arguments, respectively, in variables \(name\)
+and \(v\). Then, by first matching the pattern \(definition\) in the source code
+and then matching \(function\_call\) in each function's body using what was stored in
+each match of variable \(block\), it is possible to make a list of pairs \((caller, calee)\)
+and create a call graph. Consider the following Python code as an example:
+
+
+\begin{lstlisting}[language=Python]
+    import math
+
+    def delta(a, b, c):
+        return b**2 - 4*a*c
+
+    def bhaskara(a, b, c):
+        d = delta(a, b, c)
+        x1 = (-b + math.sqrt(d)) / 2*a
+        x2 = (-b - math.sqrt(d)) / 2*a
+        return x1, x2
+
+    a = float(input("Digite o valor de a: "))
+    b = float(input("Digite o valor de b: "))
+    c = float(input("Digite o valor de c: "))
+
+    x1, x2 = bhaskara(a, b, c)
+
+    print(f"{a}x^2 + {b}x + {c}")
+    print(f"Raiz 1: {x1}")
+    print(f"Raiz 2: {x2}")
+\end{lstlisting}
+
+Pattern \(definition\) will match with functions \(delta\) and \(bhaskara\). In 
+\(deltas\)'s body, pattern \(function\_call\) won't match with any statement, 
+since there are no calls in its body. In \(bhaskara\)'s body, \(function\_body\)
+will match the call to \(delta\) and both calls to \(math.sqrt\). This will make
+the list \([(bhaskara, delta), (bhaskara, math.sqrt), (bhaskara, math.sqrt)]\)
+and, removing the duplicates, it is possible to make the call graph.
+
+\subsection{Source code validation}
+
+% Aqui tem dois exemplos: o caso do código com map
+% e o caso do fatorial
+
+\begin{itemize}
+    \item \textbf{Checking for specific constructs}
+    
+    Consider a question that asks the student to implement a program that 
+    calculates the factorial of an integer \(n\) entered by the user.
+    % TODO: Preciso explicar o que é o fatorial?
+    % We define as \(n!\) (\(n\) factorial) the successive multiplication of \(n\) 
+    % by its predecessors until reaching 1. The factorial equation can be defined 
+    % as \(n! = n \times n-1 \times n-2 \times \ldots 3 \times 2 \times 1\). 
+    The expected solution is for the student to use a loop, such as \textit{while}, 
+    to implement the successive multiplication of the numbers, as in the code 
+    presented below:
+    
+    \begin{lstlisting}[language=Python]
+        n = int(input("Digite um numero: "))
+        fatorial = 1
+        contador = n
+        while (contador >= 1):
+            fatorial = fatorial * contador
+            contador = contador - 1
+        print(f"{n}! = {fatorial}")
+    \end{lstlisting}
+    
+    However, within the Python \texttt{math} library, there is the \texttt{factorial} 
+    function, which, given an integer \(n\), returns the result of \(n!\).
+    For this reason, some students end up importing the library and using the 
+    ready-made function, circumventing the objective of the exercise, which is 
+    to practice the repetition loop, as shown below.
+    
+    \begin{lstlisting}[language=Python]
+        import math
+        n = int(input("Digite um numero: "))
+        fatorial = math.factorial(n)
+        print(f"{n}! = {fatorial}")
+    \end{lstlisting}
+    
+    
+    The pattern presented below is capable of identifying the presence of a call 
+    to the \(factorial\) function.
+    
+    \[
+        \begin{array}{l}
+            pattern factorial\_call : function\_call := (identifier := "math.factorial") @space "(" @space \#v2:expr_list? ")" \epsilon \\
+            pattern space : space := " "*
+            
+        \end{array}
+    \]
+    
+    Where \textit{(identifier := "math.factorial")} means that the name of the 
+    function must be \textit{math.factorial}, \textit{\#v2:expr\_list?} means 
+    that the function's argument list will be stored in the variable \textit{v2}.
+    So, if the pattern matches, it means that the student is using the 
+    \textit{factorial} function from the \textit{math} library instead of writing 
+    the repetition loop, bypassing the original objective of the exercise.
+
+
+    \item \textbf{Blocking disallowed constructs}
+    
+    % TODO: Não consegui pensar numa tradução mais adequada de "enunciado" do 
+    % que "statement". É isso mesmo que costuma usar?
+    Imagine that you are evaluating a question whose statement is as follows:
+
+    % Precisa traduzir o enunciado da questão? Esse é o enunciado original 
+    % das uma questão das práticas de BCC701
+    ``Você foi contratado pelo Ministério do Meio Ambiente para avaliar a meta de 
+    reflorestamento das regiões brasileiras e vai implementar um programa para 
+    ajudá-lo em suas análises. Para facilitar a coleta de dados, cada estado é 
+    dividido em microrregiões. Você recebe periodicamente um vetor de valores 
+    inteiros indicando a quantidade mínima de árvores nativas plantadas para cada 
+    estado, representando a meta de cada estado, e uma matriz de valores inteiros 
+    que mostra a quantidade de árvores plantadas em cada estado em cada microrregião,
+    as linhas da matriz representam as microrregiões e as colunas os estados. 
+    As entradas do vetor e da matriz são feitas por meio das funções inputVetor e 
+    inputMatriz, respectivamente (definidas no livro texto da disciplina).
+
+    Seu programa calcula o total de árvores plantadas pelos estados e avalia se eles 
+    cumpriram com a meta (quantidade de árvores plantadas é igual ou superior à meta 
+    do estado), imprimindo no terminal os estados que não conseguiram cumprir a meta 
+    (os números dos estados começam de 1, embora os índices comecem de 0, então, índice 
+    0 representa o estado 1, índice 1 representa o estado 2, e assim por diante). 
+    A relação entre o vetor e a matriz se dá pelos índices dos elementos do vetor e os 
+    índices de coluna da matriz.''
+
+    And, when opening a solution submitted by a student, you come across this code:
+
+    \begin{lstlisting}[language=Python, breaklines]
+        def inputVetor():
+            entrada = input("Informe as metas dos estados: ")
+            return list(map(int, entrada.split(',')))
+
+        def inputMatriz():
+            entrada = input("Informe o plantio de arvores: ")
+            linhas = entrada.split(';')
+            matriz = [list(map(int, linha.split(','))) for linha in linhas]
+            return matriz
+
+        def main():
+            print("Ministerio do Meio Ambiente")
+            metas = inputVetor()
+            plantio = inputMatriz()
+            
+            num_estados = len(metas)
+            totais_plantio = [sum(linha[i] for linha in plantio) for i in range(num_estados)]
+            
+            for i in range(num_estados):
+            if totais_plantio[i] < metas[i]:
+                print(f"Estado {i+1}, meta = {metas[i]}, plantio = {totais_plantio[i]}")
+
+        if __name__ == "__main__":
+            main()
+    \end{lstlisting}
+
+    Although correct and generating the expected response, it uses Python language 
+    resources that ignore the intended learning objectives or were not presented 
+    in the course, such as the use of the \texttt{map} and \texttt{sum} functions, 
+    list comprehension and the use of the \texttt{\_\_name\_\_} attribute.
+    The PEG presented in Appendix~\ref{append:python-peg} would immediately reject 
+    this solution, as it does not accept constructions such as list comprehension.
+\end{itemize}
+
+
+\subsection{Source code rewriting}
+
+Now consider the following code snippet:
+
+\begin{lstlisting}[language=Python]
+    if not a:
+        print("Condition 'a' is false")
+    else:
+        print("Condition 'a' is true")
+\end{lstlisting}
+
+Although the code does not present any errors, it can be refactored, with the 
+aim of improving the structure and, consequently, understanding of the code, by 
+removing the \textit{not} from the \texttt{if} condition and exchanging the 
+command blocks of \texttt{if} and \texttt{else}, as follows:
+
+\begin{lstlisting}[language=Python]
+    if a:
+        print("Condition 'a' is true")
+    else:
+        print("Condition 'a' is false")
+\end{lstlisting}
+
+By identifying this type of construction in the student's code, it is possible 
+to suggest a rewrite to the student, explaining the reason for the suggestion 
+and the improvement it would bring to the code. The patterns presented below 
+represent a way of detecting the construction presented previously and how to 
+rewrite it.
+
+\[
+    \begin{array}{ll}
+        pattern if\_def : & if\_stmt := (("if" @space @expr ":") \#ifBlock:statement*) @elseBlock \\
+        pattern elseBlock : & else\_block := ("else" @space ":") \#elseBlock:statement* \\
+    
+        pattern subst : & if\_stmt := (("if" @space \#condition:expression ":") \#elseBlock:statement*) @elseBlock2 \\
+        pattern elseBlock2 : & else\_block := ("else" @space ":") \#ifBlock:statement* \\
+    
+        pattern expr    : & expression := @orExpr \epsilon \\
+        pattern orExpr  : & or\_expr    := @andExpr \epsilon \\
+        pattern andExpr : & and\_expr   := "not" @space \#condition:comparison \\
+    
+        pattern space : & space := " "*
+    \end{array}
+\]
+
+Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as 
+a condition a negated expression and the \textit{subst} pattern represents the 
+rewrite that will be suggested to the student.
+
+The variables \(\#condition:expression\), \(\#ifBlock:statement*\) and \(\#elseBlock:statement*\)
+in the \textit{if\_def} pattern capture, respectively, the expression in the
+\texttt{if} condition, the entire \texttt{if} block of statements and the entire 
+\texttt{else} block of statements.
+The way these variables appear in the \textit{subst} pattern indicates how the 
+rewrite will be performed. In this pattern, you can see that the \textit{not} 
+in the condition no longer appears, while the position of the block variables 
+has been changed. Thus, it is possible to use what was captured by the variables 
+in the \textit{if\_def} pattern and place it in the places where the variables 
+appear in the \textit{subst} pattern. 
+Finally, we can present the rewrite to the student, along with an explanation, to 
+make a suggestion for improving their solution.
+
+\section{Implementation details}
+
+After parsing the patterns, we replace references to other patterns with the 
+pattern itself. To do this, we create a dependency graph between the patterns, 
+topologically sort and replace the references so that no resulting pattern 
+contains references to other patterns and can be treated as a single pattern.
 
 \cleardoublepage

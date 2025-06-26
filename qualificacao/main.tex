@@ -23,6 +23,7 @@
 \usepackage{amsfonts}
 \usepackage{enumitem}
 \usepackage{tikz}
+\usepackage{listings}
 
 \usetikzlibrary{trees}
 \usetikzlibrary{shapes}
@@ -37,8 +38,8 @@
 \makenomenclature
 
 \begin{document}
-  \title{---}
-  \foreigntitle{---}
+  \title{Uma abordagem baseada em Parsing Expression Grammars para casamento de padrão em código-fonte multi-linguagem.}
+  \foreigntitle{A Parsing Expression Grammars-based approach for pattern matching in multi-language source code.}
   \author{Guilherme Augusto Anício Drummond}{do Nascimento}
   \advisor{Prof.}{Rodrigo Geraldo}{Ribeiro}{Dr.}
   
@@ -70,15 +71,17 @@
   \include{chapters/revisao}
   %\newpage\null\thispagestyle{empty}\newpage
   \include{chapters/desenvolvimento}
-  \cleardoublepage
+  % \cleardoublepage
   \include{chapters/resultados}
-  \cleardoublepage
+  % \cleardoublepage
+  \include{chapters/trabalhos-futuros}
+  % \cleardoublepage
   \include{chapters/conclusoes}
 
   \backmatter
   \bibliographystyle{coppe-unsrt}
   \bibliography{thesis}
 
-  %\appendix
-  %\include{appenA}
+  \appendix
+  \include{post-text/appenA}
 \end{document}

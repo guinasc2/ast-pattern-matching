@@ -1,1 +1,106 @@
-\chapter{Algumas Demonstra{\c c}\~oes}
+\chapter{Simplified Python PEG}\label{append:python-peg}
+
+% \[
+% \begin{array}{ll}
+%     \mathtt{file}           & \leftarrow \mathtt{(blank* \, newline)* \, statement+} \\
+%     \mathtt{statement}      & \leftarrow \mathtt{(compound / simple / comment) \, blank* \, newline*} \\
+%     \mathtt{compound}       & \leftarrow \mathtt{function\_def / if\_stmt / while\_stmt / for\_stmt} \\
+%     \mathtt{function\_def}  & \leftarrow \mathtt{("def" \, space \, identifier \, "(" \, space \, id\_list? \, ")" \, space \, ":") > statement} \\
+%     \mathtt{if\_stmt}       & \leftarrow \mathtt{(("if" \, space \, expression \, ":") > statement) (elif\_block / else\_block)?} \\
+%     \mathtt{elif\_block}    & \leftarrow \mathtt{(("elif" \, space \, expression \, ":") > statement) (elif\_block / else\_block)?} \\
+%     \mathtt{else\_block}    & \leftarrow \mathtt{("else" \, space \, ":") > statement} \\
+%     \mathtt{while\_stmt}    & \leftarrow \mathtt{("while" \, space \, expression \, ":") > statement} \\
+%     \mathtt{for\_stmt}      & \leftarrow \mathtt{("for" \, space \, identifier \, space \, "in" \, space \, expression \, ":") > statement} \\
+%     \mathtt{simple}         & \leftarrow \mathtt{import\_stmt / assignment / return\_stmt / expression} \\
+%     \mathtt{return\_stmt}   & \leftarrow \mathtt{"return" \, space \, expr\_list} \\
+%     \mathtt{import\_stmt}   & \leftarrow \mathtt{simple\_import / from\_import} \\
+%     \mathtt{simple\_import} & \leftarrow \mathtt{"import" \, space \, identifier} \\
+%     \mathtt{from\_import}   & \leftarrow \mathtt{"from" \, space \, identifier \, space \, "import" \, space (id\_list / "*")} \\
+%     \mathtt{assignment}     & \leftarrow \mathtt{id\_list \, space \, attr \, space \, expression} \\
+%     \mathtt{attr}           & \leftarrow \mathtt{"=" / "+=" / "-=" / "*=" / "/="} \\
+%     \mathtt{expression}     & \leftarrow \mathtt{or\_expr ("or" \, space \, or\_expr)*} \\
+%     \mathtt{or\_expr}       & \leftarrow \mathtt{and\_expr ("and" \, space \, and\_expr)*} \\
+%     \mathtt{and\_expr}      & \leftarrow \mathtt{"not" \, space \, comparison / comparison} \\
+%     \mathtt{comparison}     & \leftarrow \mathtt{sum (op\_comp \, sum)*} \\
+%     \mathtt{sum}            & \leftarrow \mathtt{term (op\_term \, term)* } \\
+%     \mathtt{term}           & \leftarrow \mathtt{factor (op\_factor \, factor)*} \\
+%     \mathtt{factor}         & \leftarrow \mathtt{power (op\_power \, power)*} \\
+%     \mathtt{power}          & \leftarrow \mathtt{"-" \, neg / neg} \\
+%     \mathtt{neg}            & \leftarrow \mathtt{primary \, space / "(" \, space \, expression \, ")" \, space} \\
+%     \mathtt{op\_comp}       & \leftarrow \mathtt{("==" / "!=" / "<=" / ">=" / "<" / ">") \, space} \\
+%     \mathtt{op\_term}       & \leftarrow \mathtt{("+" / "-") \, space} \\
+%     \mathtt{op\_factor}     & \leftarrow \mathtt{("*" / "/" / "\%") \, space} \\
+%     \mathtt{op\_power}      & \leftarrow \mathtt{"**" \, space} \\
+%     \mathtt{primary}        & \leftarrow \mathtt{function\_call / array\_access / "[" \, items? \, "]" / atom} \\
+%     \mathtt{function\_call} & \leftarrow \mathtt{identifier \, space \, "(" \, space \, expr\_list? \, ")" ("." \, primary)?} \\
+%     \mathtt{array\_access}  & \leftarrow \mathtt{identifier \, space \, "[" \, space \, expression \, "]" ("." \, primary)?} \\
+%     \mathtt{atom}           & \leftarrow \mathtt{"True" / "False" / "None" / number / strings / identifier} \\
+%     \mathtt{expr\_list}     & \leftarrow \mathtt{expr1 \, space (sep \, expr1 \, space)*} \\
+%     \mathtt{expr1}          & \leftarrow \mathtt{(single\_id \, space \, "=" \, space)? \, expression} \\
+%     \mathtt{items}          & \leftarrow \mathtt{expression (sep \, expression \, space)*} \\
+%     \mathtt{id\_list}       & \leftarrow \mathtt{identifier \, space (sep \, identifier \, space)*} \\
+%     \mathtt{sep}            & \leftarrow \mathtt{"," \, space} \\
+%     \mathtt{^strings}       & \leftarrow \mathtt{fstring / string} \\
+%     \mathtt{fstring}        & \leftarrow \mathtt{"f" \, string} \\
+%     \mathtt{string}         & \leftarrow \mathtt{['] (!['] char)* ['] / ["] (!["] char)* ["]} \\
+%     \mathtt{char}           & \leftarrow \mathtt{[a-zA-Z0-9 :{}.,;^+-*/\%()\_!?\text{áéúçã}] / "[" / "]"} \\
+%     \mathtt{^identifier}    & \leftarrow \mathtt{single\_id ("." \, single\_id)*} \\
+%     \mathtt{single\_id}     & \leftarrow \mathtt{[a-zA-Z] [a-zA-Z0-9\_]*} \\
+%     \mathtt{^number}        & \leftarrow \mathtt{[0-9]+} \\
+%     \mathtt{space}          & \leftarrow \mathtt{" \, "*} \\
+%     \mathtt{^blank}         & \leftarrow \mathtt{comment / " \, "} \\
+%     \mathtt{^newline}       & \leftarrow \mathtt{"\backslash r\backslash n" / "\backslash r" / "\backslash n"} \\
+% \end{array}
+% \]
+
+\begin{verbatim}
+file          <- (blank* newline)* statement+
+statement     <- (compound / simple / comment) blank* newline*
+compound      <- function_def / if_stmt / while_stmt / for_stmt
+function_def  <- ("def" space identifier "(" space id_list? ")" space ":") > statement
+if_stmt       <- (("if" space expression ":") > statement) (elif_block / else_block)?
+elif_block    <- (("elif" space expression ":") > statement) (elif_block / else_block)?
+else_block    <- ("else" space ":") > statement
+while_stmt    <- ("while" space expression ":") > statement
+for_stmt      <- ("for" space identifier space "in" space expression ":") > statement
+simple        <- import_stmt / assignment / return_stmt / expression
+return_stmt   <- "return" space expr_list
+import_stmt   <- simple_import / from_import
+simple_import <- "import" space identifier
+from_import   <- "from" space identifier space "import" space (id_list / "*")
+assignment    <- id_list space attr space expression
+attr          <- "=" / "+=" / "-=" / "*=" / "/="
+expression    <- or_expr ("or" space or_expr)*
+or_expr       <- and_expr ("and" space and_expr)*
+and_expr      <- "not" space comparison / comparison
+comparison    <- sum (op_comp sum)*
+sum           <- term (op_term term)* 
+term          <- factor (op_factor factor)*
+factor        <- power (op_power power)*
+power         <- "-" neg / neg
+neg           <- primary space / "(" space expression ")" space
+op_comp       <- ("==" / "!=" / "<=" / ">=" / "<" / ">") space
+op_term       <- ("+" / "-") space
+op_factor     <- ("*" / "/" / "%") space
+op_power      <- "**" space
+primary       <- function_call / array_access / "[" items? "]" / atom
+function_call <- identifier space "(" space expr_list? ")" ("." primary)?
+array_access  <- identifier space "[" space expression "]" ("." primary)?
+atom          <- "True" / "False" / "None" / number / strings / identifier
+expr_list     <- expr1 space (sep expr1 space)*
+expr1         <- (single_id space "=" space)? expression
+items         <- expression (sep expression space)*
+id_list       <- identifier space (sep identifier space)*
+sep           <- "," space
+^strings      <- fstring / string
+fstring       <- "f" string
+string        <- ['] (!['] char)* ['] / ["] (!["] char)* ["]
+char          <- [a-zA-Z0-9 :{}.,;^+-*/%()_!?áéúçã] / "[" / "]"
+^identifier   <- single_id ("." single_id)*
+single_id     <- [a-zA-Z] [a-zA-Z0-9_]*
+^number       <- [0-9]+
+space         <- " "*
+^blank        <- comment / " "
+^comment      <- "#" char*
+^newline      <- "\r\n" / "\r" / "\n"
+\end{verbatim}

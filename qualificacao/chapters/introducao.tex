@@ -1,21 +1,42 @@
 \chapter{Introduction}\label{chap:intro}
 
----
+Pattern matching is the act of checking a given sequence fo tokens for the presence
+of the constituents of some pattern. The match usually must be exact: ``either it 
+will or will not be a match''. It is frequently used to output the locations (if any)
+of a pattern within a token sequence, output some component of the matched pattern,
+and to substitute the matching pattern with some other token sequence (i.e., search
+and replace). Patterns generally have the form of either sequences or tree structures.
+Often, patterns sequences are described using regular expressions.
 
-% Automatic code analysis tools are commonly used in educational settings to
-% support the evaluation of programming assignments. While many existing tools
-% focus on correctness or performance, they often overlook the importance of
-% how students solve the given problems, particularly whether they follow the
-% concepts and constructs introduced during the course. 
-% In introductory programming courses, it is important not only to assess 
-% whether a student's solution is correct, but also to ensure that the 
-% student is applying the concepts and techniques taught in class. 
-% Automatic code analysis can help detect when students rely on language 
-% features or external solutions that bypass the intended learning objectives.
-% To adress this need, we propose a multi-language code analysis tool based on 
-% Parsing Expression Grammars (PEGs), designed to detect the use of advanced 
-% or unauthorized constructs in students' code submissions. This tool aims to 
-% assist educators in enforcing pedagogical boundaries while maintaining 
-% flexibility across different programming languages.
+
+\section{Objectives}\label{sec:objectives}
+
+The main objective of this work is to formalize the semantics of pattern matching
+in syntax trees. Specifically, we plan to:
+\begin{enumerate}
+    \item Define the semantics for generating a parse tree when executing a parsing expression.
+    \item Define the semantics for pattern matching on a parse tree.
+    \item Prove properties of the defined semantics.
+    \item ...
+\end{enumerate}
+
+\section{Contributions}\label{sec:contributions}
+
+Our contributions are:
+\begin{itemize}
+    \item A type system and operational semantics for generatin a parse tree.
+    \item ...
+\end{itemize}
+
+\section{Dissertation Structure}\label{sec:structure}
+
+The rest of this dissertation is structured as follow: Chapter~\ref{chap:background}
+covers the necessary background knowledge used in this work, Chapter~\ref{chap:methodology}
+presents the pattern matching and generation of parse tree, Chapter~\ref{chap:results}
+discusses some case studies using the proposed approach, Chapter~\ref{chap:future-work}
+presents the schedule of next steps, and finally Chapter~\ref{chap:conclusion} concludes
+this work.
+The code for the parsing and pattern match of parse trees can be found on 
+\url{https://github.com/guinasc2/ast-pattern-matching}.
 
 \cleardoublepage

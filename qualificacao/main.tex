@@ -13,7 +13,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,amssymb}
 \usepackage{amsthm}
-\usepackage{stfloats}
+\usepackage{stfloats, float}
 \usepackage{hyperref}
 \usepackage[intoc]{nomencl}
 \usepackage{etoolbox}
@@ -24,14 +24,18 @@
 \usepackage{enumitem}
 \usepackage{tikz}
 \usepackage{listings}
+\usepackage{rotating}
 
 \usetikzlibrary{trees}
 \usetikzlibrary{shapes}
 
 \captionsetup{compatibility=false}
 
-% \theoremstyle{definition}
+\theoremstyle{definition}
 \newtheorem{definition}{Definition}
+
+\theoremstyle{definition}
+\newtheorem{example}{Example}
 
 \makelosymbols
 \makeloabbreviations

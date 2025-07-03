@@ -1,10 +1,12 @@
 \chapter{Methodology}\label{chap:methodology}
 
-% \textbf{-- TODO: árvores --}
-% \begin{itemize}
-%     \item Síntaxe (da própria PEG ou da árvore de parse?)
-%     \item Relação de tipagem: \(\Gamma \vdash t : e\)
-% \end{itemize}
+This chapter presents the formalisms developed during the work, as well as the 
+current state of the developed library. Section~\ref{sec:parse-tress} details
+the execution of a PEG for generating a parse tree and how pattern matching works.
+Section~\ref{sec:implementation-details} discusses some implementation details.
+Section~\ref{sec:methodology-conclusion} concludes the chapter.
+
+\section{Parse trees}\label{sec:parse-tress}
 
 Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, the meta-variable \(a \in \Sigma\) an
 arbitrary alphabet symbol, \(A \in V\) a variable and \(e\) a parsing expression.
@@ -31,7 +33,7 @@ with \(L \: t\) for the left one and \(R \: t\) for the right one,
 \([t]\) is a list of trees and \(\eta\) represents that a not 
 predicate was successful.
 
-The generation of tress by execution of parsing expressions is defined by an 
+Executing a parsing expressions produces a parsing tree and is defined by an 
 inductively defined judgment that relates pairs formed by a parsing expression 
 and an input string to pairs formed by the generated tree and the remaining string.
 Notation \((e,s_ps_r) \Rightarrow_G (t,s_r)\) denote that parsing expression \(e\)
@@ -43,8 +45,7 @@ denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or
 produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics} 
 defines the PEG semantics for tree generation.
 
-\begin{figure*}[!ht]
-   \centering
+\begin{figure*}[H]
    \[
       \begin{array}{cccc}
          \infer[_{\{Eps\}}]{(\epsilon,s) \Rightarrow_G (\hat{\epsilon},s)}{} &
@@ -87,6 +88,7 @@ defines the PEG semantics for tree generation.
          \infer[_{\{ChrNil\}}]{(a,\epsilon) \Rightarrow_G \bot}{}
       \end{array}
    \]
+   \centering
    \caption{Parsing expressions operational semantics that produces a tree.}
    \label{fig:peg-tree-semantics}
 \end{figure*}
@@ -96,45 +98,22 @@ defines the PEG semantics for tree generation.
     by a parsing expression \(e\), i.e., when \((e, s_ps_r) \Rightarrow_G (t, s_r)\).
 \end{definition}
 
-% \textbf{-- TODO: Casamento de padrão --}
-% \begin{itemize}
-%     \item Síntaxe do padrão
-%     \item Relação de casamento -> \(G ; p \vdash t \leadsto S\),
-%         onde \(G\) é uma gramática, \(p\) é um padrão e \(S\) é uma lista de casamentos.
-%     \item Coerção de padrão -> \(p : e_1 \to p : e_1 / e_2\)
-%         Notação com o símbolo do Pierce: 
-%         \[
-%             e_1 <: e_1 / e_2
-%         \]
-%         \[
-%             e_2 <: e_1 / e_2
-%         \]
-%         \[
-%             G ; e_1 ; {e_1}' \vdash p \leadsto p'
-%         \]
-%         \[
-%             p : e_1 \to p' : {e_1}'
-%         \]
-%         em que \(e_1 <: {e_1}'\)
-% \end{itemize}
 
-% A collection of patterns is defined as a tuple \((V, \Sigma, P)\) where \(V\) is 
-% a finite set of variables, \(\Sigma\) is the alphabet, and \(P\) is the finite 
-% set of patterns. Each pattern \(p \in P\) is a tuple \((A, e)\), where
-% \(A \in V\) and \(e\) is a pattern expression. 
-% We let the meta-variable \(a\) denote an arbitrary alphabet symbol, \(A\) a 
-% variable, \(M\) a variable and 
+% Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
+% of identified patterns, \(U\) a finite set of variables, the meta-variable 
+% \(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and 
+% \(e\) a parsing expression.
 
-% \(n\) is the pattern identifier and \(p\)
-% is a pattern expression.
+\begin{definition}[Identified pattern]
+    An identified pattern is a pair \((i, p)\) where \(i\) is an identifier and
+    \(p\) is a pattern.
+\end{definition}
 
-Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
-of identified patterns, \(U\) a finite set of variables, the meta-variable 
-\(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and 
-\(e\) a parsing expression.
+Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of 
+variables and \(A \in V\) a variable.
 Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
-and \(p\) is a pattern expression.
-The following context-free grammar defines the syntax of a pattern expression:
+and \(p\) is a pattern.
+The following context-free grammar defines the syntax of a pattern:
 \[
    \begin{array}{lcl}
       p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
@@ -142,19 +121,18 @@ The following context-free grammar defines the syntax of a pattern expression:
                 \mid \, M\, \mid \, I\,\\
    \end{array}
 \]
-Where \(\epsilon\) is a pattern that matches with the empty string and is always
-successful, \(a\) matches only with the symbol \(a\), \(A\) matches with a subtree
-of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both \(p_1\) and \(p_2\)
-matches sequentially, \(p_1\,/\,p_2\) matches if one of \(p_1\) or \(p_2\) matches,
-\(p^\star\) will try to match \(p\) sequentially as many times as possible, \(!p\)
-matches only if \(p\) does not matches, \(M\) is a meta-variable that, given a variable
-\(A\), matches with any tree \(t : e\) where \((A, e) \in R\) and \(I\) is a reference
-to another pattern expression \(p'\) where \((I, p') \in \Theta\).
+Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)), 
+\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches 
+with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both 
+\(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\) 
+or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times 
+as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable 
+that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\) 
+and \(I\) is a reference to another pattern \(p'\) where \((I, p') \in \Theta\).
 
 Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
 
 \begin{figure*}[!ht]
-    \centering
     \[
         \begin{array}{ccc}
             \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
@@ -170,7 +148,8 @@ Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
             \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
         \end{array}
     \]
-    \caption{Pattern expressions semantics.}
+    \centering
+    \caption{Patterns semantics.}
     \label{fig:pattern-semantics}
 \end{figure*}
 
@@ -198,7 +177,6 @@ We also present a type coercion for parsing expressions.
     \label{fig:subtype-relations}
 \end{figure*}
 
-% TODO: não lembro o nome que o Rodrigo usou
 We present the syntax for terms of subtyping.
 \[
    \begin{array}{lcl}
@@ -235,11 +213,11 @@ that the pattern is valid and returns a corrected pattern and is defined as foll
     \begin{array}{ll}
         C(\epsilon, \epsilon)             & = \epsilon \\
         C(a, a)                           & = a \\
-        C(a, a')                          & = \bot, if a \neq a' \\
-        C((A p), (A p'))                  & = A C(p, p') \\
-        C((A p), (A' p'))                 & = \bot, if A \neq A' \\
+        C(a, a')                          & = \bot\text{, if } a \neq a' \\
+        C((A\:p), (A\:p'))                & = A C(p, p') \\
+        C((A\:p), (A'\:p'))               & = \bot\text{, if } A \neq A' \\
         C(M, M)                           & = M \\
-        C(M, M')                          & = \bot, if M \neq M' \\
+        C(M, M')                          & = \bot\text{, if } M \neq M' \\
         C(p_1\:p_2, p_1'\:p_2')           & = C(p_1, p_1')\:C(p_2, p_2') \\
         C(\epsilon, xs))                  & = [] \\
         C(p, [x])                         & = [C(p, x)] \\
@@ -249,19 +227,11 @@ that the pattern is valid and returns a corrected pattern and is defined as foll
         C(p, R p')                        & = !\,\epsilon / C(p, p') \\
         C(p^\star, {p'}^\star)            & = (C(p, p'))^\star \\
         C(!\,p, !\,p')                    & = !\,C(p, p') \\
-        
-        % C(p:e_1,\: e_1 <: e_1 \,/\, e_2) & = & p \,/\, !\epsilon \\
-        % C(p:e_2,\: e_2 <: e_1 \,/\, e_2) & = & !\epsilon \,/\, p \\
-        % % C(\epsilon:e, e <: e^\star) & = & \epsilon \\
-        % % TODO: Estou em dúvida de como escrever a parte da coerção da sequência
-        % C(p:e,\: e <: e^\star) & = & p \,/\, \epsilon \\
-        % C((p_1:e)\,(p_2:e),\: e <: e^\star) & = & C(p_1:e, e <: e^\star) \, C(p_2:e, e <: e^\star) \\
-        % % TODO: Provavelmente está faltando a parte da chamada recursiva
     \end{array}
 \]
 
 
-% TODO: Escrever regras de casamento
+\textbf{-- Escrever regras de casamento --}
 \begin{figure*}[ht]
     \[
         \begin{array}{ccc}
@@ -299,271 +269,22 @@ that the pattern is valid and returns a corrected pattern and is defined as foll
     \label{fig:matching-rules}
 \end{figure*}
 
-
-\section{Case studies}
-
-To evaluate and demonstrate the capabilities of the tool, we present below
-some case studies: the generation of a call graph, a suggestion for rewriting 
-the code, and a verification of the presence of specific constructions in the 
-code. All case studies use the PEG shown in Appendix~\ref{append:python-peg},
-which accepts .
-
-\subsection{Call graph generation}
-
-In this case study we try to extract a call graph from a given source code
-and to do so, we will need two different patterns: one that matches with all
-definitions of functions and one that matches with all functions calls.
-
-\[
-    \begin{array}{l}
-        pattern definition : function\_def := ("def" @space \#name:identifier "(" @space \#p:id\_list? ")" @space ":") \#block:statement*
-        \\
-        pattern call : function\_call := \#name:identifier @space "(" @space \#v:expr\_list? ")" \epsilon
-        \\
-        pattern space : space := " "*
-        \\
-    \end{array}
-\]
-
-The syntax \(pattern \: name : type \, := expression\) represents a pattern 
-identified by \(name\) that matches trees with type \(type\) and \(expression\)
-specifies how it will match. \(@name\) denotes a reference to another pattern
-and \(\#var:type\) denotes a variable that matches with trees of type \(type\).
-\textit{\(\epsilon\)} indicates that there must be nothing following the call.
-
-The pattern \(definition\) matches with any function definition, storing the
-function identifier, parameters and function body, respectively, in variables \(name\),
-\(p\) and \(block\). The pattern \(function\_call\) matches with any function 
-call, storing the function name and arguments, respectively, in variables \(name\)
-and \(v\). Then, by first matching the pattern \(definition\) in the source code
-and then matching \(function\_call\) in each function's body using what was stored in
-each match of variable \(block\), it is possible to make a list of pairs \((caller, calee)\)
-and create a call graph. Consider the following Python code as an example:
-
-
-\begin{lstlisting}[language=Python]
-    import math
-
-    def delta(a, b, c):
-        return b**2 - 4*a*c
-
-    def bhaskara(a, b, c):
-        d = delta(a, b, c)
-        x1 = (-b + math.sqrt(d)) / 2*a
-        x2 = (-b - math.sqrt(d)) / 2*a
-        return x1, x2
-
-    a = float(input("Digite o valor de a: "))
-    b = float(input("Digite o valor de b: "))
-    c = float(input("Digite o valor de c: "))
-
-    x1, x2 = bhaskara(a, b, c)
-
-    print(f"{a}x^2 + {b}x + {c}")
-    print(f"Raiz 1: {x1}")
-    print(f"Raiz 2: {x2}")
-\end{lstlisting}
-
-Pattern \(definition\) will match with functions \(delta\) and \(bhaskara\). In 
-\(deltas\)'s body, pattern \(function\_call\) won't match with any statement, 
-since there are no calls in its body. In \(bhaskara\)'s body, \(function\_body\)
-will match the call to \(delta\) and both calls to \(math.sqrt\). This will make
-the list \([(bhaskara, delta), (bhaskara, math.sqrt), (bhaskara, math.sqrt)]\)
-and, removing the duplicates, it is possible to make the call graph.
-
-\subsection{Source code validation}
-
-% Aqui tem dois exemplos: o caso do código com map
-% e o caso do fatorial
-
-\begin{itemize}
-    \item \textbf{Checking for specific constructs}
-    
-    Consider a question that asks the student to implement a program that 
-    calculates the factorial of an integer \(n\) entered by the user.
-    % TODO: Preciso explicar o que é o fatorial?
-    % We define as \(n!\) (\(n\) factorial) the successive multiplication of \(n\) 
-    % by its predecessors until reaching 1. The factorial equation can be defined 
-    % as \(n! = n \times n-1 \times n-2 \times \ldots 3 \times 2 \times 1\). 
-    The expected solution is for the student to use a loop, such as \textit{while}, 
-    to implement the successive multiplication of the numbers, as in the code 
-    presented below:
-    
-    \begin{lstlisting}[language=Python]
-        n = int(input("Digite um numero: "))
-        fatorial = 1
-        contador = n
-        while (contador >= 1):
-            fatorial = fatorial * contador
-            contador = contador - 1
-        print(f"{n}! = {fatorial}")
-    \end{lstlisting}
-    
-    However, within the Python \texttt{math} library, there is the \texttt{factorial} 
-    function, which, given an integer \(n\), returns the result of \(n!\).
-    For this reason, some students end up importing the library and using the 
-    ready-made function, circumventing the objective of the exercise, which is 
-    to practice the repetition loop, as shown below.
-    
-    \begin{lstlisting}[language=Python]
-        import math
-        n = int(input("Digite um numero: "))
-        fatorial = math.factorial(n)
-        print(f"{n}! = {fatorial}")
-    \end{lstlisting}
-    
-    
-    The pattern presented below is capable of identifying the presence of a call 
-    to the \(factorial\) function.
-    
-    \[
-        \begin{array}{l}
-            pattern factorial\_call : function\_call := (identifier := "math.factorial") @space "(" @space \#v2:expr_list? ")" \epsilon \\
-            pattern space : space := " "*
-            
-        \end{array}
-    \]
-    
-    Where \textit{(identifier := "math.factorial")} means that the name of the 
-    function must be \textit{math.factorial}, \textit{\#v2:expr\_list?} means 
-    that the function's argument list will be stored in the variable \textit{v2}.
-    So, if the pattern matches, it means that the student is using the 
-    \textit{factorial} function from the \textit{math} library instead of writing 
-    the repetition loop, bypassing the original objective of the exercise.
-
-
-    \item \textbf{Blocking disallowed constructs}
-    
-    % TODO: Não consegui pensar numa tradução mais adequada de "enunciado" do 
-    % que "statement". É isso mesmo que costuma usar?
-    Imagine that you are evaluating a question whose statement is as follows:
-
-    % Precisa traduzir o enunciado da questão? Esse é o enunciado original 
-    % das uma questão das práticas de BCC701
-    ``Você foi contratado pelo Ministério do Meio Ambiente para avaliar a meta de 
-    reflorestamento das regiões brasileiras e vai implementar um programa para 
-    ajudá-lo em suas análises. Para facilitar a coleta de dados, cada estado é 
-    dividido em microrregiões. Você recebe periodicamente um vetor de valores 
-    inteiros indicando a quantidade mínima de árvores nativas plantadas para cada 
-    estado, representando a meta de cada estado, e uma matriz de valores inteiros 
-    que mostra a quantidade de árvores plantadas em cada estado em cada microrregião,
-    as linhas da matriz representam as microrregiões e as colunas os estados. 
-    As entradas do vetor e da matriz são feitas por meio das funções inputVetor e 
-    inputMatriz, respectivamente (definidas no livro texto da disciplina).
-
-    Seu programa calcula o total de árvores plantadas pelos estados e avalia se eles 
-    cumpriram com a meta (quantidade de árvores plantadas é igual ou superior à meta 
-    do estado), imprimindo no terminal os estados que não conseguiram cumprir a meta 
-    (os números dos estados começam de 1, embora os índices comecem de 0, então, índice 
-    0 representa o estado 1, índice 1 representa o estado 2, e assim por diante). 
-    A relação entre o vetor e a matriz se dá pelos índices dos elementos do vetor e os 
-    índices de coluna da matriz.''
-
-    And, when opening a solution submitted by a student, you come across this code:
-
-    \begin{lstlisting}[language=Python, breaklines]
-        def inputVetor():
-            entrada = input("Informe as metas dos estados: ")
-            return list(map(int, entrada.split(',')))
-
-        def inputMatriz():
-            entrada = input("Informe o plantio de arvores: ")
-            linhas = entrada.split(';')
-            matriz = [list(map(int, linha.split(','))) for linha in linhas]
-            return matriz
-
-        def main():
-            print("Ministerio do Meio Ambiente")
-            metas = inputVetor()
-            plantio = inputMatriz()
-            
-            num_estados = len(metas)
-            totais_plantio = [sum(linha[i] for linha in plantio) for i in range(num_estados)]
-            
-            for i in range(num_estados):
-            if totais_plantio[i] < metas[i]:
-                print(f"Estado {i+1}, meta = {metas[i]}, plantio = {totais_plantio[i]}")
-
-        if __name__ == "__main__":
-            main()
-    \end{lstlisting}
-
-    Although correct and generating the expected response, it uses Python language 
-    resources that ignore the intended learning objectives or were not presented 
-    in the course, such as the use of the \texttt{map} and \texttt{sum} functions, 
-    list comprehension and the use of the \texttt{\_\_name\_\_} attribute.
-    The PEG presented in Appendix~\ref{append:python-peg} would immediately reject 
-    this solution, as it does not accept constructions such as list comprehension.
-\end{itemize}
-
-
-\subsection{Source code rewriting}
-
-Now consider the following code snippet:
-
-\begin{lstlisting}[language=Python]
-    if not a:
-        print("Condition 'a' is false")
-    else:
-        print("Condition 'a' is true")
-\end{lstlisting}
-
-Although the code does not present any errors, it can be refactored, with the 
-aim of improving the structure and, consequently, understanding of the code, by 
-removing the \textit{not} from the \texttt{if} condition and exchanging the 
-command blocks of \texttt{if} and \texttt{else}, as follows:
-
-\begin{lstlisting}[language=Python]
-    if a:
-        print("Condition 'a' is true")
-    else:
-        print("Condition 'a' is false")
-\end{lstlisting}
-
-By identifying this type of construction in the student's code, it is possible 
-to suggest a rewrite to the student, explaining the reason for the suggestion 
-and the improvement it would bring to the code. The patterns presented below 
-represent a way of detecting the construction presented previously and how to 
-rewrite it.
-
-\[
-    \begin{array}{ll}
-        pattern if\_def : & if\_stmt := (("if" @space @expr ":") \#ifBlock:statement*) @elseBlock \\
-        pattern elseBlock : & else\_block := ("else" @space ":") \#elseBlock:statement* \\
-    
-        pattern subst : & if\_stmt := (("if" @space \#condition:expression ":") \#elseBlock:statement*) @elseBlock2 \\
-        pattern elseBlock2 : & else\_block := ("else" @space ":") \#ifBlock:statement* \\
-    
-        pattern expr    : & expression := @orExpr \epsilon \\
-        pattern orExpr  : & or\_expr    := @andExpr \epsilon \\
-        pattern andExpr : & and\_expr   := "not" @space \#condition:comparison \\
-    
-        pattern space : & space := " "*
-    \end{array}
-\]
-
-Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as 
-a condition a negated expression and the \textit{subst} pattern represents the 
-rewrite that will be suggested to the student.
-
-The variables \(\#condition:expression\), \(\#ifBlock:statement*\) and \(\#elseBlock:statement*\)
-in the \textit{if\_def} pattern capture, respectively, the expression in the
-\texttt{if} condition, the entire \texttt{if} block of statements and the entire 
-\texttt{else} block of statements.
-The way these variables appear in the \textit{subst} pattern indicates how the 
-rewrite will be performed. In this pattern, you can see that the \textit{not} 
-in the condition no longer appears, while the position of the block variables 
-has been changed. Thus, it is possible to use what was captured by the variables 
-in the \textit{if\_def} pattern and place it in the places where the variables 
-appear in the \textit{subst} pattern. 
-Finally, we can present the rewrite to the student, along with an explanation, to 
-make a suggestion for improving their solution.
-
-\section{Implementation details}
+\section{Implementation details}\label{sec:implementation-details}
 
 After parsing the patterns, we replace references to other patterns with the 
 pattern itself. To do this, we create a dependency graph between the patterns, 
 topologically sort and replace the references so that no resulting pattern 
 contains references to other patterns and can be treated as a single pattern.
+
+We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation 
+\((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
+into a terminal (and can be matched as such via patterns) and the latter, for the 
+purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction 
+that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it 
+was a normal sequence.
+
+\section{Conclusion}\label{sec:methodology-conclusion}
+
+---
 
 \cleardoublepage

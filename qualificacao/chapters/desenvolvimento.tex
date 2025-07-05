@@ -1,7 +1,8 @@
 \chapter{Methodology}\label{chap:methodology}
 
-This chapter presents the formalisms developed during the work, as well as the 
-current state of the developed library. Section~\ref{sec:parse-tress} details
+This chapter presents the proposal of the pattern matching algorithm developed
+during the work, as well as the  current state of its implementation.
+Section~\ref{sec:parse-tress} details
 the execution of a PEG for generating a parse tree and how pattern matching works.
 Section~\ref{sec:implementation-details} discusses some implementation details.
 Section~\ref{sec:methodology-conclusion} concludes the chapter.
@@ -13,76 +14,73 @@ arbitrary alphabet symbol, \(A \in V\) a variable and \(e\) a parsing expression
 The following context-free grammar defines the syntax of a parse tree:
 \[
    \begin{array}{lcl}
-      t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, \hat{A} \, 
+      t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, \hat{A} \,
                     \mid \, \langle t_1, t_2 \rangle\,
-                    \mid \, L \: t \, \mid \, R \: t \, \mid \, [t] \, 
+                    \mid \, L \: t \, \mid \, R \: t \, \mid \, [\,] \,\mid\,t:t\,
                     \mid \, \eta \\
    \end{array}
 \]
-Where \(\hat{\epsilon}\) represents that a parsing expression resulted in 
+Where \(\hat{\epsilon}\) represents that a parsing expression resulted in
 success without consuming any symbol of its input, \(\hat{a}\) represents that
 the parsing expression consumed the symbol \(a\) from the input, \(\hat{A}\)
-represents that the parsing of the rule \((A, e) \in R\) was succeesful, 
-\(\langle t_1, t_2 \rangle\) represents that a sequence of parsing expressions 
-succeeded, 
-\(L \: t\) and \(R \: t\) both represent that a branch of an ordered choice succeeded, 
+represents that the parsing of the rule \(A \leftarrow e \in R\) was succeesful,
+\(\langle t_1, t_2 \rangle\) represents that a sequence of parsing expressions
+succeeded,
+\(L \: t\) and \(R \: t\) both represent that a branch of an ordered choice succeeded,
 with \(L \: t\) for the left one and \(R \: t\) for the right one,
-% \(L \: t\) represents that the first expression in an ordered choice 
-% succeeded, \(R \: t\) represents that the second expression in an ordered choice 
-% succeeded, 
-\([t]\) is a list of trees and \(\eta\) represents that a not 
+% \(L \: t\) represents that the first expression in an ordered choice
+% succeeded, \(R \: t\) represents that the second expression in an ordered choice
+% succeeded,
+\([t]\) is a list of trees and \(\eta\) represents that a not
 predicate was successful.
 
-Executing a parsing expressions produces a parsing tree and is defined by an 
-inductively defined judgment that relates pairs formed by a parsing expression 
+Executing a parsing expressions produces a parsing tree and is defined by an
+inductively defined judgment that relates pairs formed by a parsing expression
 and an input string to pairs formed by the generated tree and the remaining string.
 Notation \((e,s_ps_r) \Rightarrow_G (t,s_r)\) denote that parsing expression \(e\)
 consumes the prefix \(s_p\) and generates the parse tree \(t\) from the input string
-\(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Rightarrow_G \bot\) 
-denote the fact that \(s\) cannot be parsed by \(e\). We let meta-variable \(r\) 
-denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or 
-\(\bot\). We say that an expression \(e\) fails if its execution over an input 
-produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics} 
+\(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Rightarrow_G \bot\)
+denote the fact that \(s\) cannot be parsed by \(e\). We let meta-variable \(r\)
+denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or
+\(\bot\). We say that an expression \(e\) fails if its execution over an input
+produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics}
 defines the PEG semantics for tree generation.
 
 \begin{figure*}[!h]
    \[
-      \begin{array}{cccc}
+      \begin{array}{cc}
          \infer[_{\{Eps\}}]{(\epsilon,s) \Rightarrow_G (\hat{\epsilon},s)}{} &
-         \infer[_{\{ChrS\}}]{(a,as_r) \Rightarrow_G (\hat{a},s_r)}{}  &
+         \infer[_{\{ChrS\}}]{(a,as_r) \Rightarrow_G (\hat{a},s_r)}{} \\ \\
          \infer[_{\{ChrF\}}]{(a,bs_r) \Rightarrow_G \bot}{a \neq b} &
          \infer[_{\{Var\}}]{(A,s) \Rightarrow_G t}
-                           {A \leftarrow e \in R & (e,s) \Rightarrow_G t} \\ \\
+                        {A \leftarrow e \in R & (e,s) \Rightarrow_G t} \\ \\
          \multicolumn{2}{c}{
             \infer[_{\{Cat_{S1}\}}]{(e_1\,e_2,s_{p_1}s_{p_2}s_r) \Rightarrow_G (\langle t_1,t_2 \rangle, s_r)}
                                  {(e_1,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
                                  (e_2,s_{p_2}s_r)\Rightarrow_G (t_2,s_r)}
-         } &
+         } \\ \\
          \multicolumn{2}{c}{
             \infer[_{\{Cat_{F2}\}}]{(e_1\,e_2,s_ps_r) \Rightarrow_G \bot}
                                  { (e_1,s_ps_r) \Rightarrow_G (t_1,s_r) &
                                     (e_2,s_r) \Rightarrow_G \bot}} \\ \\
          \infer[_{\{Cat_{F1}\}}]{(e_1\,e_2,s)\Rightarrow_G \bot}{(e_1,s) \Rightarrow_G \bot} &
          \infer[_{\{Alt_{S1}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G (L \, t,s_r)}
-                                {(e_1,s_p\,s_r)\Rightarrow_G (t,s_r)} &
+                                {(e_1,s_p\,s_r)\Rightarrow_G (t,s_r)} \\ \\
          \multicolumn{2}{c}{
             \infer[_{\{Alt_{S2}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G R \, t}
                                   {(e_1,s_p\,s_r)\Rightarrow_G \bot &
                                    (e_2,s_p\,s_r)\Rightarrow_G t}
          } \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Rightarrow_G ([t_1, t_2],s_r)}
+            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1 : t_2,s_r)}
                                  {(e,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
                                   (e^\star, s_{p_2}s_r) \Rightarrow_G (t_2,s_r)}
-         } &
-         \multicolumn{2}{c}{
-            \infer[_{\{Star_{end}\}}]{(e^\star,s) \Rightarrow_G (\hat{\epsilon},s)}
-                                    {(e,s) \Rightarrow_G \bot}} \\ \\
-         \multicolumn{2}{c}{
-            \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Rightarrow_G \bot}
-                               {(e,s_p\,s_r) \Rightarrow_G (t,s_r)}
-         } &
-         \infer[_{\{Not_S\}}]{(!\,e,s) \Rightarrow_G (\eta),s)}
+         } \\ \\
+         \infer[_{\{Star_{end}\}}]{(e^\star,s) \Rightarrow_G ([\,],s)}
+                                    {(e,s) \Rightarrow_G \bot} &
+         \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Rightarrow_G \bot}
+                          {(e,s_p\,s_r) \Rightarrow_G (t,s_r)}\\ \\
+         \infer[_{\{Not_S\}}]{(!\,e,s) \Rightarrow_G (\eta,s)}
          {(e,s) \Rightarrow_G \bot}
            &
          \infer[_{\{ChrNil\}}]{(a,\epsilon) \Rightarrow_G \bot}{}
@@ -94,14 +92,14 @@ defines the PEG semantics for tree generation.
 \end{figure*}
 
 \begin{definition}[Type of a parse tree]
-    We say that a parse tree \(t\) has type \(e\), \(t : e\), when \(t\) is generated 
+    We say that a parse tree \(t\) has type \(e\), \(t : e\), when \(t\) is generated
     by a parsing expression \(e\), i.e., when \((e, s_ps_r) \Rightarrow_G (t, s_r)\).
 \end{definition}
 
 
 % Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
-% of identified patterns, \(U\) a finite set of variables, the meta-variable 
-% \(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and 
+% of identified patterns, \(U\) a finite set of variables, the meta-variable
+% \(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and
 % \(e\) a parsing expression.
 
 \begin{definition}[Identified pattern]
@@ -109,7 +107,7 @@ defines the PEG semantics for tree generation.
     \(p\) is a pattern.
 \end{definition}
 
-Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of 
+Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of
 variables and \(A \in V\) a variable.
 Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
 and \(p\) is a pattern.
@@ -117,17 +115,17 @@ The following context-free grammar defines the syntax of a pattern:
 \[
     \begin{array}{lcl}
         p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
-                \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p 
+                \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p
                 \mid \, M\, \mid \, I\,\\
     \end{array}
 \]
-Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)), 
-\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches 
-with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both 
-\(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\) 
-or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times 
-as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable 
-that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\) 
+Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)),
+\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
+with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
+\(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
+or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
+as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable
+that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\)
 and \(I\) is a reference to another pattern \(p'\) where \((I, p') \in \Theta\).
 
 Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
@@ -141,7 +139,7 @@ Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
             \\ \\
             \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
             \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
-            \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p} 
+            \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p}
             \\ \\
             \infer[_{\{Not\}}]{\Theta, G \vdash !p}{\Theta, G \vdash p} &
             \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{\exists e. M : e \land A \leftarrow e \in R} &
@@ -169,7 +167,7 @@ We also present a type coercion for parsing expressions.
 
             \infer[_{\{Alt_{Left}\}}]{e_1 <: e_1 / e_2}{} &
             \infer[_{\{Alt_{Right}\}}]{e_2 <: e_1 / e_2}{} &
-            \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1} 
+            \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1}
         \end{array}
     \]
     \centering
@@ -180,17 +178,17 @@ We also present a type coercion for parsing expressions.
 We present the syntax for terms of subtyping.
 \[
    \begin{array}{lcl}
-      p & \to & \epsilon \, \mid \, a \, \mid \, A \, 
+      p & \to & \epsilon \, \mid \, a \, \mid \, A \,
                     \mid \,  p_1\:p_2 \, \mid \,  p_1 / p_2 \,
-                    \mid \, L\:p \, \mid \, R\:p \, 
-                    \mid \, p^\star \, \mid \, [p] \, 
+                    \mid \, L\:p \, \mid \, R\:p \,
+                    \mid \, p^\star \, \mid \, [p] \,
                     \mid \, !\,p \, \mid \, M \\
    \end{array}
 \]
 Of note, are the production rules \(L\:p\), \(R\:p\) and \([p]\) which represents,
 respectively, the proof that the left expression in a choice operator is a subtype
 of the choice, the proof that the right expression in a choice operator is a subtype
-of the choice, and the proof that a list (possibly empty) of patterns is a subtype 
+of the choice, and the proof that a list (possibly empty) of patterns is a subtype
 of the \(\star\) operator.
 
 \begin{figure*}[ht]
@@ -259,7 +257,7 @@ that the pattern is valid and returns a corrected pattern and is defined as foll
 
             % \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
 
-            % % Não tem definição de casamento pra uma referência, 
+            % % Não tem definição de casamento pra uma referência,
             % % pq ela não existe durante o casamento
             % \\
         \end{array}
@@ -271,16 +269,16 @@ that the pattern is valid and returns a corrected pattern and is defined as foll
 
 \section{Implementation details}\label{sec:implementation-details}
 
-After parsing the patterns, we replace references to other patterns with the 
-pattern itself. To do this, we create a dependency graph between the patterns, 
-topologically sort and replace the references so that no resulting pattern 
+After parsing the patterns, we replace references to other patterns with the
+pattern itself. To do this, we create a dependency graph between the patterns,
+topologically sort and replace the references so that no resulting pattern
 contains references to other patterns and can be treated as a single pattern.
 
-We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation 
+We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation
 \((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
-into a terminal (and can be matched as such via patterns) and the latter, for the 
-purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction 
-that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it 
+into a terminal (and can be matched as such via patterns) and the latter, for the
+purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction
+that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it
 was a normal sequence.
 
 \section{Conclusion}\label{sec:methodology-conclusion}

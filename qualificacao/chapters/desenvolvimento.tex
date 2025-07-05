@@ -9,21 +9,30 @@ Section~\ref{sec:methodology-conclusion} concludes the chapter.
 
 \section{Parse trees}\label{sec:parse-tress}
 
+In order to proper define pattern matching over trees, we need
+to define parse trees over an arbitrary PEG. We start by defining
+tree syntax and a PEG semantics which produces, as a result, such
+trees. Next, we present a typing relation which assigns a parsing
+expression for a given tree. Such step is necessary to formally
+state the equivalence between our proposed tree-producing semantics
+and PEG original semantics proposed by Ford~\cite{Ford04}.
+
 Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, the meta-variable \(a \in \Sigma\) an
 arbitrary alphabet symbol, \(A \in V\) a variable and \(e\) a parsing expression.
 The following context-free grammar defines the syntax of a parse tree:
 \[
    \begin{array}{lcl}
-      t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, \hat{A} \,
+      t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, A@t\,
                     \mid \, \langle t_1, t_2 \rangle\,
-                    \mid \, L \: t \, \mid \, R \: t \, \mid \, [\,] \,\mid\,t:t\,
+                    \mid \, L(e,t) \, \mid \, R(e,t) \, \mid \, [\,] \,\mid\,t:t\,
                     \mid \, \eta \\
    \end{array}
 \]
 Where \(\hat{\epsilon}\) represents that a parsing expression resulted in
 success without consuming any symbol of its input, \(\hat{a}\) represents that
-the parsing expression consumed the symbol \(a\) from the input, \(\hat{A}\)
-represents that the parsing of the rule \(A \leftarrow e \in R\) was succeesful,
+the parsing expression consumed the symbol \(a\) from the input, \(A@t\)
+represents that the parsing of the rule \(A \leftarrow e \in R\) was succeesful
+and $t$ is a tree for $e$. Notation
 \(\langle t_1, t_2 \rangle\) represents that a sequence of parsing expressions
 succeeded,
 \(L \: t\) and \(R \: t\) both represent that a branch of an ordered choice succeeded,
@@ -31,70 +40,146 @@ with \(L \: t\) for the left one and \(R \: t\) for the right one,
 % \(L \: t\) represents that the first expression in an ordered choice
 % succeeded, \(R \: t\) represents that the second expression in an ordered choice
 % succeeded,
-\([t]\) is a list of trees and \(\eta\) represents that a not
+\([]\) is an empty list of trees for $e$ and \(t_1 : t_2\) denotes a list of
+trees in which $t_1$ is a tree for $e$ and $t_2$ is a tree for $e^*$. Finally,
+\(\eta\) represents that a not
 predicate was successful.
 
 Executing a parsing expressions produces a parsing tree and is defined by an
 inductively defined judgment that relates pairs formed by a parsing expression
 and an input string to pairs formed by the generated tree and the remaining string.
-Notation \((e,s_ps_r) \Rightarrow_G (t,s_r)\) denote that parsing expression \(e\)
+Notation \((e,s_ps_r) \Downarrow_G (t,s_r)\) denote that parsing expression \(e\)
 consumes the prefix \(s_p\) and generates the parse tree \(t\) from the input string
-\(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Rightarrow_G \bot\)
+\(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Downarrow_G \bot\)
 denote the fact that \(s\) cannot be parsed by \(e\). We let meta-variable \(r\)
 denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or
 \(\bot\). We say that an expression \(e\) fails if its execution over an input
 produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics}
 defines the PEG semantics for tree generation.
 
-\begin{figure*}[!h]
+\begin{figure}[H]
    \[
       \begin{array}{cc}
-         \infer[_{\{Eps\}}]{(\epsilon,s) \Rightarrow_G (\hat{\epsilon},s)}{} &
-         \infer[_{\{ChrS\}}]{(a,as_r) \Rightarrow_G (\hat{a},s_r)}{} \\ \\
-         \infer[_{\{ChrF\}}]{(a,bs_r) \Rightarrow_G \bot}{a \neq b} &
-         \infer[_{\{Var\}}]{(A,s) \Rightarrow_G t}
-                        {A \leftarrow e \in R & (e,s) \Rightarrow_G t} \\ \\
+         \infer[_{\{Eps\}}]{(\epsilon,s) \Downarrow_G (\hat{\epsilon},s)}{} &
+         \infer[_{\{ChrS\}}]{(a,as_r) \Downarrow_G (\hat{a},s_r)}{} \\ \\
+         \infer[_{\{ChrF\}}]{(a,bs_r) \Downarrow_G \bot}{a \neq b} &
+         \infer[_{\{Var\}}]{(A,s) \Downarrow_G (A@t, r)}
+                        {A \leftarrow e \in R & (e,s) \Downarrow_G (t,r)} \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Cat_{S1}\}}]{(e_1\,e_2,s_{p_1}s_{p_2}s_r) \Rightarrow_G (\langle t_1,t_2 \rangle, s_r)}
-                                 {(e_1,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
-                                 (e_2,s_{p_2}s_r)\Rightarrow_G (t_2,s_r)}
+            \infer[_{\{Cat_{S1}\}}]{(e_1\,e_2,s_{p_1}s_{p_2}s_r) \Downarrow_G (\langle t_1,t_2 \rangle, s_r)}
+                                 {(e_1,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1,s_{p_2}s_r) &
+                                 (e_2,s_{p_2}s_r)\Downarrow_G (t_2,s_r)}
          } \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Cat_{F2}\}}]{(e_1\,e_2,s_ps_r) \Rightarrow_G \bot}
-                                 { (e_1,s_ps_r) \Rightarrow_G (t_1,s_r) &
-                                    (e_2,s_r) \Rightarrow_G \bot}} \\ \\
-         \infer[_{\{Cat_{F1}\}}]{(e_1\,e_2,s)\Rightarrow_G \bot}{(e_1,s) \Rightarrow_G \bot} &
-         \infer[_{\{Alt_{S1}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G (L \, t,s_r)}
-                                {(e_1,s_p\,s_r)\Rightarrow_G (t,s_r)} \\ \\
+            \infer[_{\{Cat_{F2}\}}]{(e_1\,e_2,s_ps_r) \Downarrow_G \bot}
+                                 { (e_1,s_ps_r) \Downarrow_G (t_1,s_r) &
+                                    (e_2,s_r) \Downarrow_G \bot}} \\ \\
+         \infer[_{\{Cat_{F1}\}}]{(e_1\,e_2,s)\Downarrow_G \bot}{(e_1,s) \Downarrow_G \bot} &
+         \infer[_{\{Alt_{S1}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Downarrow_G (L \, t,s_r)}
+                                {(e_1,s_p\,s_r)\Downarrow_G (t,s_r)} \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Alt_{S2}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Rightarrow_G R \, t}
-                                  {(e_1,s_p\,s_r)\Rightarrow_G \bot &
-                                   (e_2,s_p\,s_r)\Rightarrow_G t}
+            \infer[_{\{Alt_{S2}\}}]{(e_1\,/\,e_2,s_p\,s_r) \Downarrow_G R \, t}
+                                  {(e_1,s_p\,s_r)\Downarrow_G \bot &
+                                   (e_2,s_p\,s_r)\Downarrow_G t}
          } \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1 : t_2,s_r)}
-                                 {(e,s_{p_1}s_{p_2}s_r) \Rightarrow_G (t_1,s_{p_2}s_r) &
-                                  (e^\star, s_{p_2}s_r) \Rightarrow_G (t_2,s_r)}
+            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1 : t_2,s_r)}
+                                 {(e,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1,s_{p_2}s_r) &
+                                  (e^\star, s_{p_2}s_r) \Downarrow_G (t_2,s_r)}
          } \\ \\
-         \infer[_{\{Star_{end}\}}]{(e^\star,s) \Rightarrow_G ([\,],s)}
-                                    {(e,s) \Rightarrow_G \bot} &
-         \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Rightarrow_G \bot}
-                          {(e,s_p\,s_r) \Rightarrow_G (t,s_r)}\\ \\
-         \infer[_{\{Not_S\}}]{(!\,e,s) \Rightarrow_G (\eta,s)}
-         {(e,s) \Rightarrow_G \bot}
+         \infer[_{\{Star_{end}\}}]{(e^\star,s) \Downarrow_G ([\,],s)}
+                                    {(e,s) \Downarrow_G \bot} &
+         \infer[_{\{Not_F\}}]{(!\,e,s_p\,s_r) \Downarrow_G \bot}
+                          {(e,s_p\,s_r) \Downarrow_G (t,s_r)}\\ \\
+         \infer[_{\{Not_S\}}]{(!\,e,s) \Downarrow_G (\eta,s)}
+         {(e,s) \Downarrow_G \bot}
            &
-         \infer[_{\{ChrNil\}}]{(a,\epsilon) \Rightarrow_G \bot}{}
+         \infer[_{\{ChrNil\}}]{(a,\epsilon) \Downarrow_G \bot}{}
       \end{array}
    \]
    \centering
    \caption{Parsing expressions operational semantics that produces a tree.}
    \label{fig:peg-tree-semantics}
-\end{figure*}
+\end{figure}
 
-\begin{definition}[Type of a parse tree]
-    We say that a parse tree \(t\) has type \(e\), \(t : e\), when \(t\) is generated
-    by a parsing expression \(e\), i.e., when \((e, s_ps_r) \Rightarrow_G (t, s_r)\).
-\end{definition}
+A parse tree is directly related to its underlying parsing expression.
+We formalize this idea using a typing relation between grammars, trees and
+parsing expressions. Notation $G\vdash t : e$ means that tree $t$ has
+type $e$ using as assumption the variables and rules defined by grammar $G$.
+Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
+
+\begin{figure}[H]
+  \[
+    \begin{array}{cc}
+      \infer[_{\{TEps\}}]{G \vdash \hat{\epsilon} : \epsilon}{} &
+      \infer[_{\{TChr\}}]{G\vdash \hat{a} : a}{} \\ \\
+      \infer[_{\{TVar\}}]{ G \vdash A@t : A}
+                      {A \leftarrow e \in R(G) & G\vdash t : e} &
+      \infer[_{\{TNot\}}]{G\vdash \eta : ! e}{}\\ \\
+      \infer[_{\{TCat\}}]{G\vdash \langle t_1, t_2\rangle : e_1\,e_2}
+                      {G\vdash  t_1 : e_1 & G\vdash t_2 : e_2} &
+      \infer[_{\{TLeft\}}]{G\vdash L(e_2,t) : e_1 / e_2}
+                       {G\vdash t : e_1} \\ \\
+      \infer[_{\{TRight\}}]{G\vdash R(e_1,t) : e_1 / e_2}
+                       {G\vdash t : e_2} &
+      \infer[_{\{TNil\}}]{G \vdash [] : e^*}{}\\ \\
+      \multicolumn{2}{c}{
+        \infer[_{\{TCons\}}]{G \vdash t_1 : t_2 : e^*}
+                         {G\vdash t_1 : e &
+                          G \vdash t_2 : e^*}
+      }
+    \end{array}
+  \]
+  \centering
+  \caption{Typing relation for parse trees.}
+  \label{fig:tree-typing}
+\end{figure}
+
+INSERIR TEXTO EXPLICANDO CADA REGRA
+
+Next, we need to show that our tree producing semantics is equivalent to
+the original semantics for PEGs. Intuitively, our trees are a strutured
+representation of the prefix parsed by a grammar. We name the textual
+representation of a parse tree as its flattening which is defined
+by recursion on the structure of the parse tree (Figure~\cite{fig:flattening-tree}).
+
+\begin{figure}[H]
+  \[
+    \begin{array}{lcl}
+      |\hat{\epsilon}| & = & \epsilon\\
+      |\hat{a}| & = & a\\
+      |A@t| & = & |t|\\
+      |\langle t_1, t_2 \rangle| & = & |t_1|\,|t_2|\\
+      |L\:t| & = & |t|\\
+      |R\:t| & = & |t|\\
+      |[]| & = & \epsilon \\
+      |t_1 : t_2| & = & |t_1|\,|t_2|\\
+    \end{array}
+  \]
+  \centering
+  \caption{Flattening of a parse tree.}
+  \label{fig:flattening-tree}
+\end{figure}
+
+EXPLICAR A FLATTENING.
+
+The typing relation specifies what kind of parse trees are possible to be
+constructed for a given parsing expression. Using the flatenning function,
+we can formally describe the relation between our tree producing semantics
+and PEG original semantics.
+The next theorem presents this result.
+
+\begin{theorem}[Semantics equivalence]
+  Let $G$ be an arbitrary PEG. If $G \vdash t : e$ then $(e, |t|) \Downarrow_G (t, \epsilon)$ and
+  $(e, |t|)\Rightarrow_G (|t|, \epsilon)$
+\end{theorem}
+\begin{proof}
+  Induction over the derivation of $G \vdash t : e$ using the correspondent semantics rule in each case.
+\end{proof}
+
+
+
+\section{Parse tree patterns}
 
 
 % Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set

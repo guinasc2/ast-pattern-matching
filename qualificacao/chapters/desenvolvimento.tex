@@ -177,194 +177,374 @@ The next theorem presents this result.
   Induction over the derivation of $G \vdash t : e$ using the correspondent semantics rule in each case.
 \end{proof}
 
+In the next section, we use parse trees and its semantics to formally define
+a pattern matching algorithm.
+
+\section{Parse tree patterns and its semantics}
+
+We start this section presenting pattern syntax and its typing relation.
+Next, we present a subtyping relation between parsing expression which allow us
+to describe coercions between patterns to allow both an easy specification of tree
+patterns and immediate implementation of pattern matching for trees.
+
+\subsection{Pattern syntax and typing relation}
+
+In simple terms, patterns describe the user intendeed structure for a given
+input parse tree. Pattern syntax shares the same structure of tree syntax with
+the addition of \emph{pattern-variables}, which will match any tree of a given type.
+The syntax of pattern is presented next.
+
+\[
+    \begin{array}{lcl}
+        p & \to & \epsilon \, \mid \, a \, \mid \, A@p\, \mid \,p_1\:p_2\,
+                \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p
+                \mid \, M : e
+    \end{array}
+\]
+Where \(\epsilon\) is a pattern that matches with the tree of
+empty string (\(\hat{\epsilon}\)),
+\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
+with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
+\(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
+or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
+as possible, \(!p\) matches only if \(p\) does not matches. \(M : e\) is a meta-variable
+that matches with any tree \(t : e\).
+
+Since patterns are similar to trees, we also define a typing relation for patterns.
+
+\begin{figure}[H]
+  \[
+    \begin{array}{cc}
+      \infer[_{\{PEps\}}]{G \vdash \epsilon : \epsilon}{} &
+      \infer[_{\{PChr\}}]{G\vdash a : a}{} \\ \\
+      \infer[_{\{PVar\}}]{ G \vdash A@p : A}
+                      {A \leftarrow e \in R(G) & G\vdash p : e} &
+      \infer[_{\{PNot\}}]{G\vdash !p: ! e}{G\vdash p : e}\\ \\
+      \infer[_{\{PCat\}}]{G\vdash p_1, p_2 : e_1\,e_2}
+                      {G\vdash  p_1 : e_1 & G\vdash p_2 : e_2} &
+      \infer[_{\{PLeft\}}]{G\vdash p_1 : e_1 / e_2}
+                       {G\vdash p_1 : e_1} \\ \\
+      \infer[_{\{PRight\}}]{G\vdash p_2 : e_1 / e_2}
+                       {G\vdash p_2 : e_2} &
+      \infer[_{\{PStar\}}]{G \vdash  p^ * : e^*}{G \vdash p : e}\\ \\
+   \end{array}
+  \]
+  \centering
+  \caption{Typing relation for patterns.}
+  \label{fig:pattern-typing}
+\end{figure}
+
+\subsection{Subtyping and for patterns}
+
+When specifying patterns over choice expressions ... EXPLICAR o motivo do subtyping
+
+We let notation $e <: e'$ denote that expression $e$ is a subtype of expression $e'$.
+The idea of the subtyping relation is to express that is possible to ``coerce'' a
+tree $t$, such that $G \vdash t : e$,  to a tree $t'$, such that $G \vdash t' : e'$,
+in a way that the coercion preserves the parsed string, i.e., $|t| = |t'|$.
+Since patterns shares all the structure of parse trees, the coercion reasoning
+applies to patterns. The main objective of this section is to define, in a precise
+manner, the subtype-based coercion for patterns.
+
+We start by defining the subtype relation between parsing expressions.
+
+\begin{figure*}[ht]
+    \[
+        \begin{array}{cccc}
+            \infer[_{\{Refl\}}]{e <: e}{} &
+            \infer[_{\{Alt_{Left}\}}]{e_1 <: e_2 / e_3}{e_1 <: e_2} &
+            \infer[_{\{Alt_{Right}\}}]{e_1 <: e_2 / e_3}{e_1 <: e_3} &
+            \infer[_{\{Star\}}]{e_1^n <: e_2^\star}{n \geq 0 & e_1 <: e_2}
+        \end{array}
+    \]
+    \centering
+    \caption{Subtype relation for parsing expressions}
+    \label{fig:subtype-relation}
+\end{figure*}
+
+The first rule denote a common requirement for subtyping: it is
+a reflexive relation. Next, we have two rules for dealing
+with the choice operator. The first shows that the left component of a choice
+is a subtype of $e_1/e_2$. The same holds for the right operand of ordered choice
+expression. Finally, we have that $e_1^n$ is a subtype of $e_2^\star$, whenever
+$e_1 <: e_2$. Notation $e^n$ denotes the repeated concatenation of $e$, as usual.
+
+Next, we define the syntax of terms to denote subtyping proofs, as follows:
+
+\[
+  \begin{array}{lcl}
+    d & \to & \mathbf{refl}
+      \: \mid \: \mathbf{Inl}\,d
+      \: \mid \: \mathbf{Inr}\,d
+      \: \mid \: \mathbf{Rec}\,d
+  \end{array}
+\]
+Term $\mathbf{refl}$ denotes a proof for $e<:e$ and $\mathbf{Inl}\:d$ denotes
+a subtyping derivation for $e_1 <:e_2 / e_3$, where $d$ represents the
+subderivation for $e_1 <: e_2$. Same reasoning applies to $\mathbf{Inr}$ and
+$\mathbf{Rec}$ for deductions of $e_1 <: e_2 / e_3$ and $e_1^n <: e_2^*$,
+respectively.
+
+Finally, we show that the subtyping relation for parsing expressions is
+decidable.
+
+\begin{theorem}[Decidability of subtyping]
+  For any parsing expressions $e_1$ and $e_2$, we have that either $e_1 <: e_2$ or
+  that $\neg (e_1 <: e_2)$
+\end{theorem}
+\begin{proof}
+  Induction over the structure of $e_1$ and case analysis over the structure of $e_2$
+  using the definition of the subtyping relation.
+\end{proof}
 
 
-\section{Parse tree patterns}
+\subsection{Subtype-based coercion for patterns}
 
+In this section we define an algorithm for coercing patterns using the subtyping
+relation between parsing expressions. The algorithm is defined by equations over
+pattern trees and subtyping terms.
+
+\[
+  \begin{array}{lcl}
+    \mathbf{coerce}(p,\mathbf{refl}) & = & p\\
+    \mathbf{coerce}(p,\mathbf{Inl}\:d) & = & \mathbf{coerce}(p,d)\,/\,\bot_p\\
+    \mathbf{coerce}(p,\mathbf{Inr}\:d) & = & \bot_p\,/\,\mathbf{coerce}(p,d)\\
+    \mathbf{coerce}(p^n,\mathbf{Rec}\:d) & = & \mathbf{coerce}(p,d)^\star\\
+  \end{array}
+\]
+
+Notation $\bot_p$ denotes the patterns which fails for any parse tree. Intuitively,
+the coercion allow us to match trees for the choice or star operator by just specifying
+the desired component, for ordered choice, or a specific number of matchings for the
+star operator.
+
+The coerce function satisfies the following property.
+
+\begin{theorem}[Correctness of coerce]
+  Let $G = (V,\Sigma, R, e_s)$ be an arbitrary PEG, $p$ a pattern such that
+  $G\vdash p : e$ and that $d$ is a proof term for $e <: e'$, for some
+  $e'$. Then, $G\vdash \mathbf{coerce}(p,d) : e'$.
+\end{theorem}
+\begin{proof}
+  Induction over the structure of $G\vdash p : e$ and case analysis over
+  the derivation of $e <: e'$ using the definitions of $\mathbf{coerce}$ and
+  the typing relation for patterns.
+\end{proof}
+
+Now with the definition of subtyping-based coercion for patterns we are
+ready to formally define an algorithm for pattern matching parse trees.
+
+\subsection{A semantics for parse trees pattern matching}
+
+We define the process of pattern matching by and inductively defined judgment
+$G \vdash p : e ; t \leadsto S$, where $G$ denotes a PEG, $p$ a pattern for $e$,
+$t$ a parse tree and $S$ is a finite mapping between pattern variable names and parse
+trees which are matched these variables during the algorithm execution.
+
+\begin{figure}[H]
+  \[
+    \begin{array}{cc}
+      \infer[_{\{PPVar\}}]{G\vdash M_1 : e ; t_1 \leadsto [M_1 \mapsto t_1]}{G \vdash t_1 : e} &
+      \infer[_{\{PEps\}}]{G \vdash \epsilon : \epsilon ; \hat{\epsilon} : \leadsto \bullet}{} \\ \\
+      \infer[_{\{PChr\}}]{G\vdash a ; \hat{a} : a \leadsto \emptyset}{} &
+      \infer[_{\{PVar\}}]{G\vdash A@p ; A@t : A \leadsto S}
+                      {A \leftarrow e \in R(G) & G\vdash p ; t : e \leadsto S}\\ \\
+      \multicolumn{2}{c}{
+        \infer[_{\{PCat\}}]{G\vdash p_1\,p_2 ; \langle t_1, t_2 : e_1\,e_2 \rangle \leadsto S}
+                        {G\vdash p_1 ; t_1 : e_1 \leadsto S_1 &
+                         G\vdash S_1[p_2] ; t_2 : e_2 \leadsto S}
+      } \\ \\
+    \end{array}
+  \]
+  \centering
+  \caption{Semantics for pattern matching parse trees.}
+  \label{fig:pattern-semantics}
+\end{figure}
 
 % Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
 % of identified patterns, \(U\) a finite set of variables, the meta-variable
 % \(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and
 % \(e\) a parsing expression.
 
-\begin{definition}[Identified pattern]
-    An identified pattern is a pair \((i, p)\) where \(i\) is an identifier and
-    \(p\) is a pattern.
-\end{definition}
+% \begin{definition}[Identified pattern]
+%     An identified pattern is a pair \((i, p)\) where \(i\) is an identifier and
+%     \(p\) is a pattern.
+% \end{definition}
+%
+% Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of
+% variables and \(A \in V\) a variable.
+% Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
+% and \(p\) is a pattern.
+% The following context-free grammar defines the syntax of a pattern:
+% \[
+%     \begin{array}{lcl}
+%         p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
+%                 \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p
+%                 \mid \, M\, \mid \, I\,\\
+%     \end{array}
+% \]
+% Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)),
+% \(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
+% with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
+% \(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
+% or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
+% as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable
+% that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\)
+% and \(I\) is a reference to another pattern \(p'\) where \((I, p') \in \Theta\).
+%
+% Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
+%
+% \begin{figure*}[!ht]
+%     \[
+%         \begin{array}{ccc}
+%             \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
+%             \infer[_{\{ChrS\}}]{\Theta, G \vdash a}{} &
+%             \infer[_{\{Var\}}]{\Theta, G \vdash A}{A \in V}
+%             \\ \\
+%             \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
+%             \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
+%             \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p}
+%             \\ \\
+%             \infer[_{\{Not\}}]{\Theta, G \vdash !p}{\Theta, G \vdash p} &
+%             \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{\exists e. M : e \land A \leftarrow e \in R} &
+%             \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
+%         \end{array}
+%     \]
+%     \centering
+%     \caption{Patterns semantics.}
+%     \label{fig:pattern-semantics}
+% \end{figure*}
+%
+% \begin{definition}[Valid pattern with respect to a tree]
+%     We say that a pattern \(p\) is valid with respect to a tree \(t\), \(p \sim t\),
+%     if and only if \(\exists e . p : e \land t : e\).
+% \end{definition}
+%
+% We also present a type coercion for parsing expressions.
+% \begin{figure*}[ht]
+%     \[
+%         \begin{array}{ccc}
+%             \infer[_{\{Reflexive\}}]{e <: e}{} &
+%             \multicolumn{2}{c}{
+%                 \infer[_{\{Transitive\}}]{e_1 <: e_3}{e_1 <: e_2 & e_2 <: e_3}
+%             } \\ \\
+%
+%             \infer[_{\{Alt_{Left}\}}]{e_1 <: e_1 / e_2}{} &
+%             \infer[_{\{Alt_{Right}\}}]{e_2 <: e_1 / e_2}{} &
+%             \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1}
+%         \end{array}
+%     \]
+%     \centering
+%     \caption{Subtype relations for parsing expressions}
+%     \label{fig:subtype-relations}
+% \end{figure*}
+%
+% We present the syntax for terms of subtyping.
+% \[
+%    \begin{array}{lcl}
+%       p & \to & \epsilon \, \mid \, a \, \mid \, A \,
+%                     \mid \,  p_1\:p_2 \, \mid \,  p_1 / p_2 \,
+%                     \mid \, L\:p \, \mid \, R\:p \,
+%                     \mid \, p^\star \, \mid \, [p] \,
+%                     \mid \, !\,p \, \mid \, M \\
+%    \end{array}
+% \]
+% Of note, are the production rules \(L\:p\), \(R\:p\) and \([p]\) which represents,
+% respectively, the proof that the left expression in a choice operator is a subtype
+% of the choice, the proof that the right expression in a choice operator is a subtype
+% of the choice, and the proof that a list (possibly empty) of patterns is a subtype
+% of the \(\star\) operator.
+%
+% \begin{figure*}[ht]
+%     \[
+%         \begin{array}{ccc}
+%             \multicolumn{3}{c}{
+%                 \infer[_{Pattern}]
+%                     {p' \sim t}
+%                     {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e'}
+%             }
+%         \end{array}
+%     \]
+%     \centering
+%     \caption{Pattern coercion}
+%     \label{fig:pattern-coercion}
+% \end{figure*}
+% Where \(C\) is a resursively defined function that receives a pattern and a proof
+% that the pattern is valid and returns a corrected pattern and is defined as follows:
+% \[
+%     \begin{array}{ll}
+%         C(\epsilon, \epsilon)             & = \epsilon \\
+%         C(a, a)                           & = a \\
+%         C(a, a')                          & = \bot\text{, if } a \neq a' \\
+%         C((A\:p), (A\:p'))                & = A C(p, p') \\
+%         C((A\:p), (A'\:p'))               & = \bot\text{, if } A \neq A' \\
+%         C(M, M)                           & = M \\
+%         C(M, M')                          & = \bot\text{, if } M \neq M' \\
+%         C(p_1\:p_2, p_1'\:p_2')           & = C(p_1, p_1')\:C(p_2, p_2') \\
+%         C(\epsilon, xs))                  & = [] \\
+%         C(p, [x])                         & = [C(p, x)] \\
+%         C(p_1\:p_2, x:xs)                 & = C(p_1, x) \: C(p_2, xs) \\
+%         C(p_1 \,/\, p_2, p_1' \,/\, p_2') & = C(p_1, p_1') / C(p_2, p_2') \\
+%         C(p, L p')                        & = C(p, p') / !\,\epsilon \\
+%         C(p, R p')                        & = !\,\epsilon / C(p, p') \\
+%         C(p^\star, {p'}^\star)            & = (C(p, p'))^\star \\
+%         C(!\,p, !\,p')                    & = !\,C(p, p') \\
+%     \end{array}
+% \]
+%
+%
+% \textbf{-- Escrever regras de casamento --}
+% \begin{figure*}[ht]
+%     \[
+%         \begin{array}{ccc}
+%             % \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
+%
+%             % \infer[_{\{ChrS\}}]{a \sim a}{} &
+%
+%             % \infer[_{\{Var\}}]{A \sim A}{} \\ \\
+%
+%             % \infer[_{\{Seq\}}]
+%             %     {p_1\:p_2 \sim t_1\:t_2}
+%             %     {p_1 \sim t_1 & p_2 \sim t_2} &
+%
+%             % \infer[_{\{Choice\}}]
+%             %     {p_1 / p_2 \sim t_1 / t_2}
+%             %     {p_1 \sim t_1 & p_2 \sim t_2} &
+%
+%             % \infer[_{\{Star\}}]
+%             %     {p^\star \sim [t]}
+%             %     {p \sim t} \\ \\
+%
+%             % \infer[_{\{Not\}}]
+%             %     {!\,p \sim !\,t}
+%             %     {p \sim t} &
+%
+%             % \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
+%
+%             % % Não tem definição de casamento pra uma referência,
+%             % % pq ela não existe durante o casamento
+%             % \\
+%         \end{array}
+%     \]
+%     \centering
+%     \caption{Matching rules}
+%     \label{fig:matching-rules}
+% \end{figure*}
+%
+% \section{Implementation details}\label{sec:implementation-details}
 
-Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of
-variables and \(A \in V\) a variable.
-Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
-and \(p\) is a pattern.
-The following context-free grammar defines the syntax of a pattern:
-\[
-    \begin{array}{lcl}
-        p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
-                \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p
-                \mid \, M\, \mid \, I\,\\
-    \end{array}
-\]
-Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)),
-\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
-with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
-\(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
-or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
-as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable
-that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\)
-and \(I\) is a reference to another pattern \(p'\) where \((I, p') \in \Theta\).
-
-Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
-
-\begin{figure*}[!ht]
-    \[
-        \begin{array}{ccc}
-            \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
-            \infer[_{\{ChrS\}}]{\Theta, G \vdash a}{} &
-            \infer[_{\{Var\}}]{\Theta, G \vdash A}{A \in V}
-            \\ \\
-            \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
-            \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
-            \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p}
-            \\ \\
-            \infer[_{\{Not\}}]{\Theta, G \vdash !p}{\Theta, G \vdash p} &
-            \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{\exists e. M : e \land A \leftarrow e \in R} &
-            \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
-        \end{array}
-    \]
-    \centering
-    \caption{Patterns semantics.}
-    \label{fig:pattern-semantics}
-\end{figure*}
-
-\begin{definition}[Valid pattern with respect to a tree]
-    We say that a pattern \(p\) is valid with respect to a tree \(t\), \(p \sim t\),
-    if and only if \(\exists e . p : e \land t : e\).
-\end{definition}
-
-We also present a type coercion for parsing expressions.
-\begin{figure*}[ht]
-    \[
-        \begin{array}{ccc}
-            \infer[_{\{Reflexive\}}]{e <: e}{} &
-            \multicolumn{2}{c}{
-                \infer[_{\{Transitive\}}]{e_1 <: e_3}{e_1 <: e_2 & e_2 <: e_3}
-            } \\ \\
-
-            \infer[_{\{Alt_{Left}\}}]{e_1 <: e_1 / e_2}{} &
-            \infer[_{\{Alt_{Right}\}}]{e_2 <: e_1 / e_2}{} &
-            \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1}
-        \end{array}
-    \]
-    \centering
-    \caption{Subtype relations for parsing expressions}
-    \label{fig:subtype-relations}
-\end{figure*}
-
-We present the syntax for terms of subtyping.
-\[
-   \begin{array}{lcl}
-      p & \to & \epsilon \, \mid \, a \, \mid \, A \,
-                    \mid \,  p_1\:p_2 \, \mid \,  p_1 / p_2 \,
-                    \mid \, L\:p \, \mid \, R\:p \,
-                    \mid \, p^\star \, \mid \, [p] \,
-                    \mid \, !\,p \, \mid \, M \\
-   \end{array}
-\]
-Of note, are the production rules \(L\:p\), \(R\:p\) and \([p]\) which represents,
-respectively, the proof that the left expression in a choice operator is a subtype
-of the choice, the proof that the right expression in a choice operator is a subtype
-of the choice, and the proof that a list (possibly empty) of patterns is a subtype
-of the \(\star\) operator.
-
-\begin{figure*}[ht]
-    \[
-        \begin{array}{ccc}
-            \multicolumn{3}{c}{
-                \infer[_{Pattern}]
-                    {p' \sim t}
-                    {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e'}
-            }
-        \end{array}
-    \]
-    \centering
-    \caption{Pattern coercion}
-    \label{fig:pattern-coercion}
-\end{figure*}
-Where \(C\) is a resursively defined function that receives a pattern and a proof
-that the pattern is valid and returns a corrected pattern and is defined as follows:
-\[
-    \begin{array}{ll}
-        C(\epsilon, \epsilon)             & = \epsilon \\
-        C(a, a)                           & = a \\
-        C(a, a')                          & = \bot\text{, if } a \neq a' \\
-        C((A\:p), (A\:p'))                & = A C(p, p') \\
-        C((A\:p), (A'\:p'))               & = \bot\text{, if } A \neq A' \\
-        C(M, M)                           & = M \\
-        C(M, M')                          & = \bot\text{, if } M \neq M' \\
-        C(p_1\:p_2, p_1'\:p_2')           & = C(p_1, p_1')\:C(p_2, p_2') \\
-        C(\epsilon, xs))                  & = [] \\
-        C(p, [x])                         & = [C(p, x)] \\
-        C(p_1\:p_2, x:xs)                 & = C(p_1, x) \: C(p_2, xs) \\
-        C(p_1 \,/\, p_2, p_1' \,/\, p_2') & = C(p_1, p_1') / C(p_2, p_2') \\
-        C(p, L p')                        & = C(p, p') / !\,\epsilon \\
-        C(p, R p')                        & = !\,\epsilon / C(p, p') \\
-        C(p^\star, {p'}^\star)            & = (C(p, p'))^\star \\
-        C(!\,p, !\,p')                    & = !\,C(p, p') \\
-    \end{array}
-\]
-
-
-\textbf{-- Escrever regras de casamento --}
-\begin{figure*}[ht]
-    \[
-        \begin{array}{ccc}
-            % \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
-
-            % \infer[_{\{ChrS\}}]{a \sim a}{} &
-
-            % \infer[_{\{Var\}}]{A \sim A}{} \\ \\
-
-            % \infer[_{\{Seq\}}]
-            %     {p_1\:p_2 \sim t_1\:t_2}
-            %     {p_1 \sim t_1 & p_2 \sim t_2} &
-
-            % \infer[_{\{Choice\}}]
-            %     {p_1 / p_2 \sim t_1 / t_2}
-            %     {p_1 \sim t_1 & p_2 \sim t_2} &
-
-            % \infer[_{\{Star\}}]
-            %     {p^\star \sim [t]}
-            %     {p \sim t} \\ \\
-
-            % \infer[_{\{Not\}}]
-            %     {!\,p \sim !\,t}
-            %     {p \sim t} &
-
-            % \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
-
-            % % Não tem definição de casamento pra uma referência,
-            % % pq ela não existe durante o casamento
-            % \\
-        \end{array}
-    \]
-    \centering
-    \caption{Matching rules}
-    \label{fig:matching-rules}
-\end{figure*}
-
-\section{Implementation details}\label{sec:implementation-details}
-
-After parsing the patterns, we replace references to other patterns with the
-pattern itself. To do this, we create a dependency graph between the patterns,
-topologically sort and replace the references so that no resulting pattern
-contains references to other patterns and can be treated as a single pattern.
-
-We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation
-\((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
-into a terminal (and can be matched as such via patterns) and the latter, for the
-purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction
-that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it
-was a normal sequence.
+% After parsing the patterns, we replace references to other patterns with the
+% pattern itself. To do this, we create a dependency graph between the patterns,
+% topologically sort and replace the references so that no resulting pattern
+% contains references to other patterns and can be treated as a single pattern.
+%
+% We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation
+% \((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
+% into a terminal (and can be matched as such via patterns) and the latter, for the
+% purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction
+% that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it
+% was a normal sequence.
+%
 
 \section{Conclusion}\label{sec:methodology-conclusion}
 

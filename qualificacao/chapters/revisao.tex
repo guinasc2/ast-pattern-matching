@@ -1,15 +1,185 @@
 \chapter{Background}\label{chap:background}
 
 This chapter presents fundamental concepts for understanding and development of the 
-work. Section~\ref{sec:type-systems} reviews concepts related to type systems and 
-Section~\ref{sec:operational-semantics} reviews concepts related to operational 
-semantics. Section~\ref{sec:pegs} formally introduces PEGs and their 
-operational semantics. Related work is discussed in Section~\ref{sec:related-work}.
+work. Section~\ref{sec:operational-semantics} reviews concepts related to operational 
+semantics and Section~\ref{sec:type-systems} reviews concepts related to type systems.
+Section~\ref{sec:pegs} formally introduces PEGs and their operational semantics. 
+Related work is discussed in Section~\ref{sec:related-work}.
 Section~\ref{sec:background-conclusion} concludes the chapter.
+
+The examples in this section will make use of Pierce's
+% \cite{pierce2002-types-and-programming-languages} 
+\(\mathbb{B}\mathbb{N}\) language for arithmetic expressions:
+\textbf{-- Quando eu faço a citação do Pierce, o projeto começa a dar erros --}
+
+\[
+    \begin{array}{lcl}
+        t & \to & \texttt{true} \, \mid \, \texttt{false} \, 
+                \mid \, \texttt{if} \: t \: \texttt{then} \: t \: \texttt{else} \: t \,
+                \mid \, \texttt{0} \, \mid \, \texttt{succ} \: t \, 
+                \mid \, \texttt{pred} \: t \, \mid \, \texttt{iszero} \: t
+    \end{array}
+\]
+It features numbers, booleans, a test and a conditional expression.
+
+\section{Operational semantics}\label{sec:operational-semantics}
+
+In programming language theory, semantics is the rigorous mathematical study of
+the meaning of programming languages. Semantics assign computational meaning to 
+valid strings in a programming language syntax. It describes the processes a 
+computer follows when executing a program in that specific language. There are
+three basic approaches to formalizing semantics: operational semantics, denotational 
+semantics and axiomatic semantics.
+In this work, we will focus on operational semantics. 
+
+Operational semantics specifies the behaviour of a programming language directly,
+by defining a simple abstract machine. The meaning of a valid string is described 
+by the transitions it induces on states of the machine. Operational semantics
+are classified in two categories: structural operational semantics and natural
+semantics.
+
+Structural operational semantics\cite{plotkin1981-operational-semantics} (also 
+called small-step semantics) defines the behaviour of a program in terms of the 
+behavious of its parts, i.e., defines how the individual steps are performed.
+Figure~\ref{fig:bn-operational-semantics} shows the small-step semantics for 
+\(\mathbb{B}\mathbb{N}\). Judgment \(t \to t'\) means expression \(t\) reduces
+to \(t'\) in one step and \(to^\star\) represents the reflexive and transitive
+closure of \(\to\). Example~\ref{fig:bn-small-step-example} presents the 
+evaluation of the term \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:
+\texttt{false}\:\texttt{else}\:\texttt{true}\)
+
+\begin{figure*}[!h]
+    \[
+        \begin{array}{cc}
+            \infer[_{\{E-IfTrue\}}]{\texttt{if}\:\texttt{true}\:\texttt{then}\:t_2\:\texttt{else}\:t_3 \to t_2}{}
+            &
+            \infer[_{\{E-IfFalse\}}]{\texttt{if}\:\texttt{false}\:\texttt{then}\:t_2\:\texttt{else}\:t_3 \to t_3}{}
+            \\ \\
+            \multicolumn{2}{c}{
+                \infer[_{\{E-IfTrue\}}]{
+                    \texttt{if}\:t_1\:\texttt{then}\:t_2\:\texttt{else}\:t_3
+                    \to
+                    \texttt{if}\:{t_1}'\:\texttt{then}\:t_2\:\texttt{else}\:t_3
+                }{
+                    t_1 \to {t_1}'
+                }
+            }
+            \\ \\
+            \infer[_{\{E-Succ\}}]{\texttt{succ}\:t_1 \to \texttt{succ}\:{t_1}'}{t_1 \to {t_1}'}
+            &
+            \infer[_{\{E-PredZero\}}]{\texttt{pred}\:0 \to 0}{}
+            \\ \\
+            \infer[_{\{E-PredSucc\}}]{\texttt{pred}\:\texttt{succ}\:t_1 \to t_1}{}
+            &
+            \infer[_{\{E-Pred\}}]{\texttt{pred}\:t_1 \to \texttt{pred}\:{t_1}'}{t_1 \to {t_1}'}
+            \\ \\
+            \infer[_{\{E-IszeroZero\}}]{\texttt{iszero}\:0 \to \texttt{true}}{}
+            &
+            \infer[_{\{E-IszeroSucc\}}]{\texttt{iszero}\:0 \to \texttt{false}}{}
+            \\ \\
+            \multicolumn{2}{c}{
+                \infer[_{\{E-Iszero\}}]{\texttt{iszero}\:t_1 \to \texttt{iszero}\:{'t_1'}}{{t_1 \to {t_1}'}}
+            }
+        \end{array}
+    \]
+    \centering
+    \caption{Structural operational semantics for \(\mathbb{B}\mathbb{N}\)}
+    \label{fig:bn-operational-semantics}
+\end{figure*}
+
+\begin{example}
+    \label{fig:bn-small-step-example}
+    Small step evaluation of \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true}\)
+
+    \[
+        \begin{array}{ll}
+            \texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} & \\
+            \rightarrow\; \texttt{if}\:\texttt{true}\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} & (\text{E-IszeroZero}) \\
+            \rightarrow\; \texttt{false} & (\text{E-IfTrue})
+        \end{array}
+    \]
+\end{example}
+
+We say a term is in normal form when no evaluation rules applies to it.
+When it is in normal form but not a value, i.e. we say it is stuck, and 
+so, it has no meaning according to the given semantics, such as 
+\(\texttt{succ}\:\texttt{true}\) or \(\texttt{pred}\:\texttt{false}\).
 
 \section{Type systems}\label{sec:type-systems}
 
-\section{Operational semantics}\label{sec:operational-semantics}
+Since a term can get stuck at some stage, by reaching a term which no evaluation 
+rules applies, it corresponds to a meaningless or erroneous program. It would be
+useful then, to be able to tell that a term will not get stuck during its evaluation
+before actually evaluating such term. So, we need to be able to distinguish between
+terms whose results will be a numeric value and terms whose result will be a boolean.
+What we need, then, are types and a type system. We introduce two types, \texttt{Nat}
+and \texttt{Bool}, for classifying terms this way. A type system is a set of rules on 
+how the terms of a language should be typed
+% \cite{pierce2002-types-and-programming-languages}
+. Type checking is is the process of verifying if the syntax has a valid derivation
+on the type system, i.e., checking if the program has meaning.
+
+Saying that a term \(t\) has type \(T\), means that \(t\) evaluates to a value 
+of the appropriate form. The typing relation, \(t : T\) for \(\mathbb{B}\mathbb{N}\) 
+is presented on Figure~\ref{fig:bn-typing-relation}.
+
+\begin{figure*}[!h]
+    \[
+        \begin{array}{cc}
+            \infer[_{\{T-True\}}]{\texttt{true} : \texttt{Bool}}{}
+            &
+            \infer[_{\{T-False\}}]{\texttt{false} : \texttt{Bool}}{}
+            \\ \\
+            \infer[_{\{T-Zero\}}]{0 : \texttt{Nat}}{}
+            &
+            \infer[_{\{T-Succ\}}]{\texttt{succ}\:t_1 : \texttt{Nat}}{t_1 : \texttt{Nat}}
+            \\ \\
+            \infer[_{\{T-Pred\}}]{\texttt{pred}\:t_1 : \texttt{Nat}}{t_1 : \texttt{Nat}}
+            &
+            \infer[_{\{T-IsZero\}}]{\texttt{iszero}\:t_1 : \texttt{Bool}}{t_1 : \texttt{Nat}}
+            \\ \\
+            \multicolumn{2}{c}{
+                \infer[_{\{E-IfTrue\}}]{
+                    \texttt{if}\:t_1\:\texttt{then}\:t_2\:\texttt{else}\:t_3 : T
+                }{
+                    t_1 : \texttt{Bool} & t_2 : T & t_3 : T
+                }
+            }
+        \end{array}
+    \]
+    \centering
+    \caption{Typing relation for \(\mathbb{B}\mathbb{N}\)}
+    \label{fig:bn-typing-relation}
+\end{figure*}
+
+\begin{example}
+    Type derivation for the term \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true}\).
+
+    \[
+        \infer[]{
+            \texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} : \texttt{Bool}
+        }{
+            \infer[]{
+                \texttt{iszero}\:0 : \texttt{Bool}
+            }{
+                0 : \texttt{Nat}
+            }
+            &
+            \infer[]{\texttt{false} : \texttt{Bool}}{}
+            &
+            \infer[]{\texttt{true} : \texttt{Bool}}{}
+        }
+    \]
+\end{example}
+
+When a term has a valid type derivation, we say it is well typed. Regardless of
+meaning, we know it produces a value. No invalid terms such as \(\texttt{succ}\:
+\texttt{true}\) or \(\texttt{pred}\:\texttt{false}\) will have a typing derivation,
+but some terms that would not get stuck may not have a type derivation, such as
+\(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:0\:\texttt{else}\:\texttt{true}\),
+since the second and third arguments have different types. Type systems can help 
+avoid several kinds of errors, both at compile and run time, but is inevitable to
+reject some programs that would result in a value.
 
 \section{An Overview of PEGs}\label{sec:pegs}
 

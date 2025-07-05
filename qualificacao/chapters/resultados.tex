@@ -29,8 +29,11 @@ definitions of functions and one that matches with all functions calls.
 %     \end{array}
 % \]
 \begin{verbatim}
-pattern definition : function\def := ("def" @space #name:identifier "(" @space #p:id\list? ")" @space ":") #block:statement*
-pattern call : function\call := #name:identifier @space "(" @space #v:expr\list? ")" \epsilon
+pattern definition : function_def := ("def" @space 
+                     #name:identifier "(" @space #p:id\list? ")" 
+                     @space ":") #block:statement*
+pattern call : function_call := #name:identifier @space 
+               "(" @space #v:expr\list? ")" \epsilon
 pattern space : space := " "*
 \end{verbatim}
 
@@ -132,7 +135,9 @@ to the \(factorial\) function.
 %     \end{array}
 % \]
 \begin{verbatim}
-    pattern factorial_call : function_call := (identifier := "math.factorial") @space "(" @space #v2:expr_list? ")" \epsilon \\
+    pattern factorial_call : function_call := (identifier := 
+                             "math.factorial") @space "(" 
+                             @space #v2:expr_list? ")" \epsilon
     pattern space : space := " "*
 \end{verbatim}
 
@@ -248,17 +253,21 @@ rewrite it.
 %     \end{array}
 % \]
 \begin{verbatim}
-    pattern if_def : & if_stmt := (("if" @space @expr ":") #ifBlock:statement*) @elseBlock \\
-    pattern elseBlock : & else_block := ("else" @space ":") #elseBlock:statement* \\
+    pattern if_def : if_stmt := (("if" @space @expr ":") 
+                     #ifBlock:statement*) @elseBlock
+    pattern elseBlock : else_block := ("else" @space ":") 
+                        #elseBlock:statement*
 
-    pattern subst : & if_stmt := (("if" @space #condition:expression ":") #elseBlock:statement*) @elseBlock2 \\
-    pattern elseBlock2 : & else_block := ("else" @space ":") #ifBlock:statement* \\
+    pattern subst : if_stmt := (("if" @space #condition:expression 
+                    ":") #elseBlock:statement*) @elseBlock2
+    pattern elseBlock2 : else_block := ("else" @space ":") 
+                         #ifBlock:statement*
 
-    pattern expr    : & expression := @orExpr \epsilon \\
-    pattern orExpr  : & or_expr    := @andExpr \epsilon \\
-    pattern andExpr : & and_expr   := "not" @space #condition:comparison \\
+    pattern expr : expression := @orExpr \epsilon
+    pattern orExpr : or_expr := @andExpr \epsilon
+    pattern andExpr : and_expr := "not" @space #condition:comparison
 
-    pattern space : & space := " "*
+    pattern space : space := " "*
 \end{verbatim}
 
 Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as 

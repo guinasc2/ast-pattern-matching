@@ -45,7 +45,7 @@ denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or
 produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics} 
 defines the PEG semantics for tree generation.
 
-\begin{figure*}[H]
+\begin{figure*}[!h]
    \[
       \begin{array}{cccc}
          \infer[_{\{Eps\}}]{(\epsilon,s) \Rightarrow_G (\hat{\epsilon},s)}{} &
@@ -115,11 +115,11 @@ Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U
 and \(p\) is a pattern.
 The following context-free grammar defines the syntax of a pattern:
 \[
-   \begin{array}{lcl}
-      p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
+    \begin{array}{lcl}
+        p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
                 \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p 
                 \mid \, M\, \mid \, I\,\\
-   \end{array}
+    \end{array}
 \]
 Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)), 
 \(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches 

@@ -1,5 +1,7 @@
 \chapter{Methodology}\label{chap:methodology}
 
+RESCREVER ISSO para estrutura atual do capítulo
+
 This chapter presents the proposal of the pattern matching algorithm developed
 during the work, as well as the  current state of its implementation.
 Section~\ref{sec:parse-tress} details
@@ -316,11 +318,9 @@ pattern trees and subtyping terms.
 Notation $\bot_p$ denotes the patterns which fails for any parse tree. Intuitively,
 the coercion allow us to match trees for the choice or star operator by just specifying
 the desired component, for ordered choice, or a specific number of matchings for the
-star operator.
+star operator. The coerce function satisfies the following property.
 
-The coerce function satisfies the following property.
-
-\begin{theorem}[Correctness of coerce]
+\begin{theorem}[Correctness of coerce]\label{thm:coerce-correct}
   Let $G = (V,\Sigma, R, e_s)$ be an arbitrary PEG, $p$ a pattern such that
   $G\vdash p : e$ and that $d$ is a proof term for $e <: e'$, for some
   $e'$. Then, $G\vdash \mathbf{coerce}(p,d) : e'$.
@@ -336,30 +336,112 @@ ready to formally define an algorithm for pattern matching parse trees.
 
 \subsection{A semantics for parse trees pattern matching}
 
-We define the process of pattern matching by and inductively defined judgment
-$G \vdash p : e ; t \leadsto S$, where $G$ denotes a PEG, $p$ a pattern for $e$,
-$t$ a parse tree and $S$ is a finite mapping between pattern variable names and parse
-trees which are matched these variables during the algorithm execution.
+Before presenting the semantics for pattern matching we need some additional
+definitions. We name a \emph{match} a sequence between pattern variables
+and parse trees. We let meta-variable $S$ to represent an arbitrary match.
+In simple terms, the result of matching a pattern against a tree is a sequence
+which holds the trees associated with each pattern variable matched.
+Notation $[M \mapsto t]$ denotes the singleton match between
+a pattern-variable $M$ with a tree $t$, $\bullet$ denotes an empty match and
+$\uplus$ denotes sequence concatenation. We let meta-variable $r$
+denote either a match $S$ or a failure, $\bot$.
+
+Matching a pattern $p$ against a tree $t$ is a process defined by an inductively
+defined judgment $G \vdash p : e; t \leadsto S$, where $G$ denotes a PEG,
+$p$ a pattern for $e$, $t$ a parse tree and $S$ is the result match.
+The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
 
 \begin{figure}[H]
   \[
     \begin{array}{cc}
       \infer[_{\{PPVar\}}]{G\vdash M_1 : e ; t_1 \leadsto [M_1 \mapsto t_1]}{G \vdash t_1 : e} &
-      \infer[_{\{PEps\}}]{G \vdash \epsilon : \epsilon ; \hat{\epsilon} : \leadsto \bullet}{} \\ \\
-      \infer[_{\{PChr\}}]{G\vdash a ; \hat{a} : a \leadsto \emptyset}{} &
-      \infer[_{\{PVar\}}]{G\vdash A@p ; A@t : A \leadsto S}
-                      {A \leftarrow e \in R(G) & G\vdash p ; t : e \leadsto S}\\ \\
-      \multicolumn{2}{c}{
-        \infer[_{\{PCat\}}]{G\vdash p_1\,p_2 ; \langle t_1, t_2 : e_1\,e_2 \rangle \leadsto S}
-                        {G\vdash p_1 ; t_1 : e_1 \leadsto S_1 &
-                         G\vdash S_1[p_2] ; t_2 : e_2 \leadsto S}
-      } \\ \\
+      \infer[_{\{PEps\}}]{G \vdash \epsilon : \epsilon ; \hat{\epsilon} \leadsto \bullet}{} \\ \\
+      \infer[_{\{PChr\}}]{G\vdash a : a ; \hat{a} \leadsto \emptyset}{} &
+      \infer[_{\{PChrf\}}]{G \vdash a : a  ; \hat{b} \leadsto \bot}{a \neq b}\\ \\
+        \infer[_{\{PVar\}}]{G\vdash A@p : A ; A@t \leadsto r}
+                        {\begin{array}{c}
+                           A \leftarrow e \in R(G) \\
+                           G\vdash p : e ; t \leadsto r
+                         \end{array}}
+        &
+        \infer[_{\{PCat\}}]{G\vdash p_1\,p_2 : e_1\,e_2; \langle t_1, t_2 \rangle \leadsto S_1 \uplus S_2}
+                        {\begin{array}{c}
+                           G\vdash p_1 :e_1 ; t_1 : \leadsto S_1 \\
+                           G\vdash p_2 :e_2 ; t_2 :\leadsto S_2
+                        \end{array}}\\ \\
+      \infer[_{\{PCat1\}}]{G\vdash p_1\,p_2 : e_1 \, e_2  ; \langle t_1, t_2 \rangle \leadsto \bot}
+                      {G\vdash p_1 : e_1 ; t_1 \leadsto \bot} &
+      \infer[_{\{PCat2\}}]{G\vdash p_1\,p_2 :e_1\,e_2 ; \langle t_1, t_2 \rangle \leadsto \bot}
+                        {\begin{array}{c}
+                            G\vdash p_1 :e_1 ; t_1 \leadsto S_1 \\
+                            G\vdash p_2 :e_2 ; t_2\leadsto \bot
+                         \end{array}} \\ \\
+      \infer[_{\{PLeft\}}]{G \vdash p_1\,/\,p_2 ;: e_1\,/\,e_2\ ;L(e_2, t) \leadsto S}
+                       {G\vdash p_1 :e_1 ; t\leadsto S} &
+      \infer[_{\{PLeft1\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2 ; L(e_2, t) \leadsto \bot}
+                       {G\vdash p_1 :e_1 ; t \leadsto \bot} \\ \\
+      \infer[_{\{PRight\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto S}
+                       {\begin{array}{c}
+                          G\vdash p_1 :e_1 ; t \leadsto \bot \\
+                          G\vdash p_2 :e_2 ; t\leadsto S
+                       \end{array}} &
+      \infer[_{\{PRight1\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto r}
+                       {\begin{array}{c}
+                          G\vdash p_1 : e_1 ; t \leadsto \bot\\
+                          G\vdash p_2 : e_2; t \leadsto r
+                        \end{array}} \\ \\
+      \infer[_{\{PNot\}}]{G \vdash !\,p : ! e ; \eta \leadsto \bullet}
+                      {G \vdash p : e ; t \leadsto \bot} &
+      \infer[_{\{PNot1\}}]{G \vdash !\,p : ! e ; \eta \leadsto \bot}
+                       {G \vdash p : e ; \eta \leadsto S}\\ \\
+
+      \infer[_{\{PStarn\}}]{G \vdash p^\star : e^\star ; [] \leadsto \bullet}{} &
+      \infer[_{\{PStarf\}}]{G\vdash p^\star : e^\star ; t_1 : t_2 \leadsto S_1 \uplus S_2}
+                        {\begin{array}{c}
+                           G \vdash p : e ; t_1 \leadsto S_1\\
+                           G \vdash p^\star : e^\star ; t_2 \leadsto S_2
+                         \end{array}}\\ \\
     \end{array}
   \]
   \centering
   \caption{Semantics for pattern matching parse trees.}
   \label{fig:pattern-semantics}
 \end{figure}
+
+EXPLICAR REGRAS e APRESENTAR UM EXEMPLO.
+
+Given a match $S$ and a pattern $p$, we denote by $S[p]$ the parse tree
+obtained by replacing pattern variables in p by its corresponding tree
+in $S$. Now, we state the main property of the matching algorithm.
+
+\begin{theorem}[Matching correctness]\label{thm:matching-correct}
+  Let $G = (V,\Sigma,R, e_s)$ be an arbitrary PEG, $p$ a pattern,
+  $e$ a parsing expression and $t$ a parse tree. If $G \vdash p : e$, $G \vdash t : e$ and
+  $G\vdash p : e ; t \leadsto S$ then $S[p] = t$.
+\end{theorem}
+\begin{proof}
+  By induction over the structure of derivation of $G\vdash p : e ; t \leadsto S$.
+\end{proof}
+
+While previous theorem result is important, it is limited: it only applies to
+trees and patterns that have same parsing expression type $e$. Thanks to coercion,
+we can use the algorithm whenever the pattern and tree types does satisfy the
+subtyping relation.
+
+\begin{corollary}
+Let $G = (V,\Sigma,R, e_s)$ be an arbitrary PEG, $p$ a pattern,
+$e$ a parsing expression and $t$ a parse tree. If $G \vdash p : e$, $G \vdash t : e'$,
+  $d :: e <: e'$ and $G\vdash \mathbf{coerce}(p,d) : e' ; t \leadsto S$ then $S[p] = t$.
+\end{corollary}
+\begin{proof}
+  Immediate from theorems~\ref{thm:matching-correct} and~\ref{thm:coerce-correct}.
+\end{proof}
+
+\section{Implementation details}
+
+Aqui apresente, de maneira simples a estrutura do código. Se possível, utilize imagens para
+explicar a arquitetura da ferramenta.
+
 
 % Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
 % of identified patterns, \(U\) a finite set of variables, the meta-variable

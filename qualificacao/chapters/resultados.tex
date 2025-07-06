@@ -1,14 +1,14 @@
-\chapter{Results}\label{chap:results}
+\chapter{Experiments}\label{chap:results}
 
-This chapter presents the results obtained so far. Section~\ref{sec:case-studies} 
+This chapter presents the results obtained so far. Section~\ref{sec:case-studies}
 presents some case studies to evaluate the capabilities of the tool (library?) developed.
 Section~\ref{sec:results-conclusion} concludes the chapter.
 
 \section{Case studies}\label{sec:case-studies}
 
 To evaluate and demonstrate the capabilities of the tool, we present below
-some case studies: the generation of a call graph, a suggestion for rewriting 
-the code, and a verification of the presence of specific constructions in the 
+some case studies: the generation of a call graph, a suggestion for rewriting
+the code, and a verification of the presence of specific constructions in the
 code. All case studies use the PEG shown in Appendix~\ref{append:python-peg},
 which accepts a subset of Python.
 
@@ -29,15 +29,15 @@ definitions of functions and one that matches with all functions calls.
 %     \end{array}
 % \]
 \begin{verbatim}
-pattern definition : function_def := ("def" @space 
-                     #name:identifier "(" @space #p:id\list? ")" 
+pattern definition : function_def := ("def" @space
+                     #name:identifier "(" @space #p:id\list? ")"
                      @space ":") #block:statement*
-pattern call : function_call := #name:identifier @space 
+pattern call : function_call := #name:identifier @space
                "(" @space #v:expr\list? ")" \epsilon
 pattern space : space := " "*
 \end{verbatim}
 
-The syntax \(pattern \: name : type \, := expression\) represents a pattern 
+The syntax \(pattern \: name : type \, := expression\) represents a pattern
 identified by \(name\) that matches trees with type \(type\) and \(expression\)
 specifies how it will match. \(@name\) denotes a reference to another pattern
 and \(\#var:type\) denotes a variable that matches with trees of type \(type\).
@@ -45,7 +45,7 @@ and \(\#var:type\) denotes a variable that matches with trees of type \(type\).
 
 The pattern \(definition\) matches with any function definition, storing the
 function identifier, parameters and function body, respectively, in variables \(name\),
-\(p\) and \(block\). The pattern \(function\_call\) matches with any function 
+\(p\) and \(block\). The pattern \(function\_call\) matches with any function
 call, storing the function name and arguments, respectively, in variables \(name\)
 and \(v\). Then, by first matching the pattern \(definition\) in the source code
 and then matching \(function\_call\) in each function's body using what was stored in
@@ -76,29 +76,29 @@ and create a call graph. Consider the following Python code as an example:
     print(f"Raiz 2: {x2}")
 \end{lstlisting}
 
-Pattern \(definition\) will match with functions \(delta\) and \(bhaskara\). In 
-\(deltas\)'s body, pattern \(function\_call\) won't match with any statement, 
+Pattern \(definition\) will match with functions \(delta\) and \(bhaskara\). In
+\(deltas\)'s body, pattern \(function\_call\) won't match with any statement,
 since there are no calls in its body. In \(bhaskara\)'s body, \(function\_body\)
 will match the call to \(delta\) and both calls to \(math.sqrt\). This will make
-the list [(\(bhaskara\), \(delta\)), (\(bhaskara\), \(math.sqrt\)), 
+the list [(\(bhaskara\), \(delta\)), (\(bhaskara\), \(math.sqrt\)),
 (\(bhaskara\), \(math.sqrt\))]
 and, removing the duplicates, it is possible to make the call graph.
 
 \subsection{Source code validation}
 
-These examples were designed in the context of an introductory programming course. 
-This course uses an automatic judge that evaluates the results of programs 
-submitted by the student, but does not perform a static analysis of the submitted 
-source code. The following examples present two distinct cases that the judge 
-fails to identify, but that could be identified and penalized (or even rejected) due 
+These examples were designed in the context of an introductory programming course.
+This course uses an automatic judge that evaluates the results of programs
+submitted by the student, but does not perform a static analysis of the submitted
+source code. The following examples present two distinct cases that the judge
+fails to identify, but that could be identified and penalized (or even rejected) due
 to the use of unauthorized constructs.
 
 \subsubsection{Checking for specific constructs}
-    
-Consider a question that asks the student to implement a program that 
+
+Consider a question that asks the student to implement a program that
 calculates the factorial of an integer \(n\) entered by the user.
-The expected solution is for the student to use a loop, such as \textit{while}, 
-to implement the successive multiplication of the numbers, as in the code 
+The expected solution is for the student to use a loop, such as \textit{while},
+to implement the successive multiplication of the numbers, as in the code
 presented below:
 
 \begin{lstlisting}[language=Python]
@@ -111,10 +111,10 @@ presented below:
     print(f"{n}! = {fatorial}")
 \end{lstlisting}
 
-However, within the Python \texttt{math} library, there is the \texttt{factorial} 
+However, within the Python \texttt{math} library, there is the \texttt{factorial}
 function, which, given an integer \(n\), returns the result of \(n!\).
-For this reason, some students end up importing the library and using the 
-ready-made function, circumventing the objective of the exercise, which is 
+For this reason, some students end up importing the library and using the
+ready-made function, circumventing the objective of the exercise, which is
 to practice the repetition loop, as shown below.
 
 \begin{lstlisting}[language=Python]
@@ -125,50 +125,50 @@ to practice the repetition loop, as shown below.
 \end{lstlisting}
 
 
-The pattern presented below is capable of identifying the presence of a call 
+The pattern presented below is capable of identifying the presence of a call
 to the \(factorial\) function.
 
 % \[
 %     \begin{array}{l}
 %         pattern factorial\_call : function\_call := (identifier := "math.factorial") @space "(" @space \#v2:expr_list? ")" \epsilon \\
-%         pattern space : space := " "*        
+%         pattern space : space := " "*
 %     \end{array}
 % \]
 \begin{verbatim}
-    pattern factorial_call : function_call := (identifier := 
-                             "math.factorial") @space "(" 
+    pattern factorial_call : function_call := (identifier :=
+                             "math.factorial") @space "("
                              @space #v2:expr_list? ")" \epsilon
     pattern space : space := " "*
 \end{verbatim}
 
-Where \textit{(identifier := "math.factorial")} means that the name of the 
-function must be \textit{math.factorial}, \textit{\#v2:expr\_list?} means 
+Where \textit{(identifier := "math.factorial")} means that the name of the
+function must be \textit{math.factorial}, \textit{\#v2:expr\_list?} means
 that the function's argument list will be stored in the variable \textit{v2}.
-So, if the pattern matches, it means that the student is using the 
-\textit{factorial} function from the \textit{math} library instead of writing 
+So, if the pattern matches, it means that the student is using the
+\textit{factorial} function from the \textit{math} library instead of writing
 the repetition loop, bypassing the original objective of the exercise.
 
 
 \subsubsection{Blocking disallowed constructs}
-    
+
 Imagine that you are evaluating a question whose statement is as follows:
 
-``You have been hired by the Ministry of the Environment to assess the reforestation 
-target of Brazilian regions and will implement a program to help you with your analyses. 
-To facilitate data collection, each state is divided into microregions. 
-You periodically receive a vector of integer values indicating the minimum number 
-of native trees planted for each state, representing the target for each state, 
-and a matrix of integer values showing the number of trees planted in each state 
-in each microregion. The rows of the matrix represent the microregions and the 
-columns represent the states. The inputs of the vector and matrix are made through 
+``You have been hired by the Ministry of the Environment to assess the reforestation
+target of Brazilian regions and will implement a program to help you with your analyses.
+To facilitate data collection, each state is divided into microregions.
+You periodically receive a vector of integer values indicating the minimum number
+of native trees planted for each state, representing the target for each state,
+and a matrix of integer values showing the number of trees planted in each state
+in each microregion. The rows of the matrix represent the microregions and the
+columns represent the states. The inputs of the vector and matrix are made through
 the functions inputVector and inputMatrix, respectively (defined in the course textbook).
 
-Your program calculates the total number of trees planted by the states and 
-evaluates whether they have met the target (the number of trees planted is equal 
-to or greater than the state's target), printing on the terminal the states that 
-failed to meet the target (the state numbers start at 1, although the indexes 
-start at 0, so index 0 represents state 1, index 1 represents state 2, and so on). 
-The relationship between the vector and the matrix is given by the indexes of the 
+Your program calculates the total number of trees planted by the states and
+evaluates whether they have met the target (the number of trees planted is equal
+to or greater than the state's target), printing on the terminal the states that
+failed to meet the target (the state numbers start at 1, although the indexes
+start at 0, so index 0 represents state 1, index 1 represents state 2, and so on).
+The relationship between the vector and the matrix is given by the indexes of the
 vector elements and the column indexes of the matrix.''
 
 And, when opening a solution submitted by a student, you come across this code:
@@ -188,10 +188,10 @@ And, when opening a solution submitted by a student, you come across this code:
         print("Ministerio do Meio Ambiente")
         metas = inputVetor()
         plantio = inputMatriz()
-        
+
         num_estados = len(metas)
         totais_plantio = [sum(linha[i] for linha in plantio) for i in range(num_estados)]
-        
+
         for i in range(num_estados):
         if totais_plantio[i] < metas[i]:
             print(f"Estado {i+1}, meta = {metas[i]}, plantio = {totais_plantio[i]}")
@@ -200,11 +200,11 @@ And, when opening a solution submitted by a student, you come across this code:
         main()
 \end{lstlisting}
 
-Although correct and generating the expected response, it uses Python language 
-resources that ignore the intended learning objectives or were not presented 
-in the course, such as the use of the \texttt{map} and \texttt{sum} functions, 
+Although correct and generating the expected response, it uses Python language
+resources that ignore the intended learning objectives or were not presented
+in the course, such as the use of the \texttt{map} and \texttt{sum} functions,
 list comprehension and the use of the \texttt{\_\_name\_\_} attribute.
-The PEG presented in Appendix~\ref{append:python-peg} would immediately reject 
+The PEG presented in Appendix~\ref{append:python-peg} would immediately reject
 this solution, as it does not accept constructions such as list comprehension.
 
 
@@ -219,9 +219,9 @@ Now consider the following code snippet:
         print("Condition 'a' is true")
 \end{lstlisting}
 
-Although the code does not present any errors, it can be refactored, with the 
-aim of improving the structure and, consequently, understanding of the code, by 
-removing the \textit{not} from the \texttt{if} condition and exchanging the 
+Although the code does not present any errors, it can be refactored, with the
+aim of improving the structure and, consequently, understanding of the code, by
+removing the \textit{not} from the \texttt{if} condition and exchanging the
 command blocks of \texttt{if} and \texttt{else}, as follows:
 
 \begin{lstlisting}[language=Python]
@@ -231,36 +231,36 @@ command blocks of \texttt{if} and \texttt{else}, as follows:
         print("Condition 'a' is false")
 \end{lstlisting}
 
-By identifying this type of construction in the student's code, it is possible 
-to suggest a rewrite to the student, explaining the reason for the suggestion 
-and the improvement it would bring to the code. The patterns presented below 
-represent a way of detecting the construction presented previously and how to 
+By identifying this type of construction in the student's code, it is possible
+to suggest a rewrite to the student, explaining the reason for the suggestion
+and the improvement it would bring to the code. The patterns presented below
+represent a way of detecting the construction presented previously and how to
 rewrite it.
 
 % \[
 %     \begin{array}{ll}
 %         pattern if\_def : & if\_stmt := (("if" @space @expr ":") \#ifBlock:statement*) @elseBlock \\
 %         pattern elseBlock : & else\_block := ("else" @space ":") \#elseBlock:statement* \\
-    
+
 %         pattern subst : & if\_stmt := (("if" @space \#condition:expression ":") \#elseBlock:statement*) @elseBlock2 \\
 %         pattern elseBlock2 : & else\_block := ("else" @space ":") \#ifBlock:statement* \\
-    
+
 %         pattern expr    : & expression := @orExpr \epsilon \\
 %         pattern orExpr  : & or\_expr    := @andExpr \epsilon \\
 %         pattern andExpr : & and\_expr   := "not" @space \#condition:comparison \\
-    
+
 %         pattern space : & space := " "*
 %     \end{array}
 % \]
 \begin{verbatim}
-    pattern if_def : if_stmt := (("if" @space @expr ":") 
+    pattern if_def : if_stmt := (("if" @space @expr ":")
                      #ifBlock:statement*) @elseBlock
-    pattern elseBlock : else_block := ("else" @space ":") 
+    pattern elseBlock : else_block := ("else" @space ":")
                         #elseBlock:statement*
 
-    pattern subst : if_stmt := (("if" @space #condition:expression 
+    pattern subst : if_stmt := (("if" @space #condition:expression
                     ":") #elseBlock:statement*) @elseBlock2
-    pattern elseBlock2 : else_block := ("else" @space ":") 
+    pattern elseBlock2 : else_block := ("else" @space ":")
                          #ifBlock:statement*
 
     pattern expr : expression := @orExpr \epsilon
@@ -270,21 +270,21 @@ rewrite it.
     pattern space : space := " "*
 \end{verbatim}
 
-Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as 
-a condition a negated expression and the \textit{subst} pattern represents the 
+Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as
+a condition a negated expression and the \textit{subst} pattern represents the
 rewrite that will be suggested to the student.
 
 The variables \(\#condition:expression\), \(\#ifBlock:statement*\) and \(\#elseBlock:statement*\)
 in the \textit{if\_def} pattern capture, respectively, the expression in the
-\texttt{if} condition, the entire \texttt{if} block of statements and the entire 
+\texttt{if} condition, the entire \texttt{if} block of statements and the entire
 \texttt{else} block of statements.
-The way these variables appear in the \textit{subst} pattern indicates how the 
-rewrite will be performed. In this pattern, you can see that the \textit{not} 
-in the condition no longer appears, while the position of the block variables 
-has been changed. Thus, it is possible to use what was captured by the variables 
-in the \textit{if\_def} pattern and place it in the places where the variables 
-appear in the \textit{subst} pattern. 
-Finally, we can present the rewrite to the student, along with an explanation, to 
+The way these variables appear in the \textit{subst} pattern indicates how the
+rewrite will be performed. In this pattern, you can see that the \textit{not}
+in the condition no longer appears, while the position of the block variables
+has been changed. Thus, it is possible to use what was captured by the variables
+in the \textit{if\_def} pattern and place it in the places where the variables
+appear in the \textit{subst} pattern.
+Finally, we can present the rewrite to the student, along with an explanation, to
 make a suggestion for improving their solution.
 
 \section{Conclusion}\label{sec:results-conclusion}

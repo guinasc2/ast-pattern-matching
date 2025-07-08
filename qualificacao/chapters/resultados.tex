@@ -1,7 +1,7 @@
 \chapter{Experiments}\label{chap:results}
 
 This chapter presents the results obtained so far. Section~\ref{sec:case-studies}
-presents some case studies to evaluate the capabilities of the tool developed.
+presents some case studies to evaluate the capabilities of the developed tool.
 Section~\ref{sec:results-conclusion} concludes the chapter.
 
 \section{Case studies}\label{sec:case-studies}
@@ -114,8 +114,8 @@ presented below:
 However, within the Python \texttt{math} library, there is the \texttt{factorial}
 function, which, given an integer \(n\), returns the result of \(n!\).
 For this reason, some students end up importing the library and using the
-ready-made function, circumventing the objective of the exercise, which is
-to practice the repetition loop, as shown below.
+function, circumventing the objective of the exercise, which is to practice the 
+repetition loop, as shown below.
 
 \begin{lstlisting}[language=Python]
     import math
@@ -128,17 +128,11 @@ to practice the repetition loop, as shown below.
 The pattern presented below is capable of identifying a call to the 
 \(factorial\) function.
 
-% \[
-%     \begin{array}{l}
-%         pattern factorial\_call : function\_call := (identifier := "math.factorial") @space "(" @space \#v2:expr_list? ")" \epsilon \\
-%         pattern space : space := " "*
-%     \end{array}
-% \]
 \begin{verbatim}
-    pattern factorial_call : function_call := (identifier :=
-                             "math.factorial") @space "("
-                             @space #v2:expr_list? ")" \epsilon
-    pattern space : space := " "*
+pattern factorial_call : function_call := (identifier :=
+                         "math.factorial") @space "("
+                         @space #v2:expr_list? ")" \epsilon
+pattern space : space := " "*
 \end{verbatim}
 
 Where \textit{(identifier := "math.factorial")} means that the name of the
@@ -253,26 +247,26 @@ rewrite it.
 %     \end{array}
 % \]
 \begin{verbatim}
-    pattern if_def : if_stmt := (("if" @space @expr ":")
-                     #ifBlock:statement*) @elseBlock
-    pattern elseBlock : else_block := ("else" @space ":")
-                        #elseBlock:statement*
+pattern if_def : if_stmt := (("if" @space @expr ":")
+                 #ifBlock:statement*) @elseBlock
+pattern elseBlock : else_block := ("else" @space ":")
+                    #elseBlock:statement*
 
-    pattern subst : if_stmt := (("if" @space #condition:expression
-                    ":") #elseBlock:statement*) @elseBlock2
-    pattern elseBlock2 : else_block := ("else" @space ":")
-                         #ifBlock:statement*
+pattern subst : if_stmt := (("if" @space #condition:expression
+                ":") #elseBlock:statement*) @elseBlock2
+pattern elseBlock2 : else_block := ("else" @space ":")
+                        #ifBlock:statement*
 
-    pattern expr : expression := @orExpr \epsilon
-    pattern orExpr : or_expr := @andExpr \epsilon
-    pattern andExpr : and_expr := "not" @space #condition:comparison
+pattern expr : expression := @orExpr \epsilon
+pattern orExpr : or_expr := @andExpr \epsilon
+pattern andExpr : and_expr := "not" @space #condition:comparison
 
-    pattern space : space := " "*
+pattern space : space := " "*
 \end{verbatim}
 
-Where the \textit{if\_def} pattern matches when it finds an \(if\) that has as
-a condition a negated expression and the \textit{subst} pattern represents the
-rewrite that will be suggested to the student.
+Where the \textit{if\_def} pattern matches when it finds an \(if\) that has a 
+negated expression as its condition and the \textit{subst} pattern represents 
+the rewrite that will be suggested to the student.
 
 The variables \(\#condition:expression\), \(\#ifBlock:statement*\) and \(\#elseBlock:statement*\)
 in the \textit{if\_def} pattern capture, respectively, the expression in the

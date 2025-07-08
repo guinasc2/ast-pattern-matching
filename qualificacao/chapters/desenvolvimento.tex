@@ -1,8 +1,5 @@
 \chapter{Methodology}\label{chap:methodology}
 
-RESCREVER ISSO para estrutura atual do capítulo.
-G: Feito.
-
 This chapter presents the proposal of the pattern matching algorithm developed
 during the work, as well as the  current state of its implementation.
 Section~\ref{sec:parse-tress} details the semantics for producing a parse tree
@@ -28,7 +25,7 @@ The following context-free grammar defines the syntax of a parse tree:
    \begin{array}{lcl}
       t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, A@t\,
                     \mid \, \langle t_1, t_2 \rangle\,
-                    \mid \, L(e,t) \, \mid \, R(e,t) \, \mid \, [\,] \,\mid\,t \typecolon t\,
+                    \mid \, L\:t \, \mid \, R\:t \, \mid \, [\,] \,\mid\,t \typecolon t\,
                     \mid \, \eta \\
    \end{array}
 \]
@@ -39,15 +36,11 @@ represents that the parsing of the rule \(A \leftarrow e \in R\) was succeesful
 and $t$ is a tree for $e$. Notation
 \(\langle t_1, t_2 \rangle\) represents that a sequence of parsing expressions
 succeeded,
-\(L \: t\) and \(R \: t\) both represent that a branch of an ordered choice succeeded,
-with \(L \: t\) for the left one and \(R \: t\) for the right one,
-% \(L \: t\) represents that the first expression in an ordered choice
-% succeeded, \(R \: t\) represents that the second expression in an ordered choice
-% succeeded,
+\(L \: t\) represents that the left branch in an ordered choice succeeded, while
+\(R \: t\) represents that the right branch in an ordered choice succeeded.
 \([]\) is an empty list of trees for $e$ and \(t_1  \typecolon  t_2\) denotes a list of
 trees in which $t_1$ is a tree for $e$ and $t_2$ is a tree for $e^*$. Finally,
-\(\eta\) represents that a not
-predicate was successful.
+\(\eta\) represents that a not predicate was successful.
 
 Executing a parsing expressions produces a parsing tree and is defined by an
 inductively defined judgment that relates pairs formed by a parsing expression
@@ -122,9 +115,9 @@ Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
       \infer[_{\{TNot\}}]{G\vdash \eta :\: ! e}{}\\ \\
       \infer[_{\{TCat\}}]{G\vdash \langle t_1, t_2\rangle : e_1\,e_2}
                       {G\vdash  t_1 : e_1 & G\vdash t_2 : e_2} &
-      \infer[_{\{TLeft\}}]{G\vdash L(e_2,t) : e_1 / e_2}
+      \infer[_{\{TLeft\}}]{G\vdash L\:t : e_1 / e_2}
                        {G\vdash t : e_1} \\ \\
-      \infer[_{\{TRight\}}]{G\vdash R(e_1,t) : e_1 / e_2}
+      \infer[_{\{TRight\}}]{G\vdash R\:t : e_1 / e_2}
                        {G\vdash t : e_2} &
       \infer[_{\{TNil\}}]{G \vdash [] : e^*}{}\\ \\
       \multicolumn{2}{c}{
@@ -138,9 +131,6 @@ Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
   \caption{Typing relation for parse trees.}
   \label{fig:tree-typing}
 \end{figure}
-
-INSERIR TEXTO EXPLICANDO CADA REGRA
-G: Feito.
 
 Rule \(_{TEps}\) means that the tree \(\hat{\epsilon}\) has type \(\epsilon\).
 Rule \(_{TChr}\) means that the tree \(\hat{a}\) has type equal to the char consumed.
@@ -178,15 +168,12 @@ by recursion on the structure of the parse tree (Figure~\ref{fig:flattening-tree
   \label{fig:flattening-tree}
 \end{figure}
 
-EXPLICAR A FLATTENING.
-G: Feito.
-
 Flattening a parse tree essentially means to collapse the tree's structure into a 
 a string, containing the characters at the tree's leaves. \(\hat{\epsilon}\) and
 \([]\) both flattens to empty string \(\epsilon\) and \(\hat{a}\) flattens to 
 symbol \(a\), while \(A@t\) flattens \(t\). Flattening both \(\langle t_1, t_2 
 \rangle\) and \(t_1  \typecolon  t_2\) means concatening the flatenning of \(t_1\) 
-and of \(t_2\), while flattening \(L\:t\) and \(R\:t\) means flattening \(t\) directly. 
+and of \(t_2\), while flattening \(L\:t\) and \(R\:t\) just flattens \(t\) directly. 
 
 The typing relation specifies what kind of parse trees are possible to be
 constructed for a given parsing expression. Using the flatenning function,
@@ -261,10 +248,6 @@ Since patterns are similar to trees, we also define a typing relation for patter
 
 % \subsection{Subtyping for and for patterns}
 \subsection{Subtyping for parsing expressions and patterns}
-
-When specifying patterns over choice expressions ... EXPLICAR o motivo do subtyping
-G: Feito. Pro exemplo eu estava pensando em usar o próprio exemplo de um casamento
-que teria mais pra frente, pois teria a coerção nele.
 
 When specifying patterns over choice expressions, we may want to match against 
 a specific branch of a choice. Instead of specifying a choice pattern that will 
@@ -357,10 +340,11 @@ pattern trees and subtyping terms.
   \end{array}
 \]
 
-Notation $\bot_p$ denotes the patterns which fails for any parse tree. Intuitively,
-the coercion allow us to match trees for the choice or star operator by just specifying
-the desired component, for ordered choice, or a specific number of matchings for the
-star operator. The coerce function satisfies the following property.
+Notation $\bot_p$ denotes the patterns which fails for any parse tree and it is 
+equivalent to pattern \(!M : e\), where \(p : e\). Intuitively, the coercion allow 
+us to match trees for the choice or star operator by just specifying the desired 
+component, for ordered choice, or a specific number of matchings for the star 
+operator. The coerce function satisfies the following property.
 
 \begin{theorem}[Correctness of coerce]\label{thm:coerce-correct}
   Let $G = (V,\Sigma, R, e_s)$ be an arbitrary PEG, $p$ a pattern such that
@@ -418,9 +402,9 @@ The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
                             G\vdash p_1 :e_1 ; t_1 \leadsto S_1 \\
                             G\vdash p_2 :e_2 ; t_2\leadsto \bot
                          \end{array}} \\ \\
-      \infer[_{\{PLeft\}}]{G \vdash p_1\,/\,p_2 ;: e_1\,/\,e_2\ ;L(e_2, t) \leadsto r}
+      \infer[_{\{PLeft\}}]{G \vdash p_1\,/\,p_2 ;: e_1\,/\,e_2\ ;L\:t \leadsto r}
                        {G\vdash p_1 :e_1 ; t\leadsto r} &
-      \infer[_{\{PRight\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto r}
+      \infer[_{\{PRight\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R\:t \leadsto r}
                        {G\vdash p_2 : e_2; t \leadsto r} \\ \\
       \infer[_{\{PNot\}}]{G \vdash !\,p : ! e ; \eta \leadsto \bullet}
                       {G \vdash p : e ; t \leadsto \bot} &
@@ -439,10 +423,6 @@ The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
   \caption{Semantics for pattern matching parse trees.}
   \label{fig:pattern-semantics}
 \end{figure}
-
-EXPLICAR REGRAS e APRESENTAR UM EXEMPLO.
-G: Expliquei as regras, mas estou tendo dúvida na melhor forma de representar a 
-parse tree e o padrão.
 
 Rule \(_{PPVar}\) specifies that a pattern variable \(M : e\) matches with any
 tree \(t\) of type \(e\) and binds \(t\) to \(M\). Rule \(_{PEps}\) specifies 
@@ -467,65 +447,23 @@ concatenates all the resulting binds in each match.
 
 \begin{example}
   Consider the PEG for arithmetic expressions shown in Figure~\ref{fig:peg-arith-expressions}, 
-  the string \((1+2)*3\) and its parse tree and the pattern 
-  
-  \textbf{-- Não sei a melhor forma de escrever a parse tree e o padrão aqui --}
-  
-  % Esse é um possível padrão:
-  %   pattern a : E := (T := (F := ("(" #m:E ")") "*" F := ("3" ε)) ε)
-  % Essa é a parse tree que a ferramenta gera:
-  %   NT E
-  %   ╰╴Seq
-  %     ├╴NT T
-  %     | ╰╴Seq
-  %     |   ├╴NT F
-  %     |   | ╰╴Right
-  %     |   |   ╰╴Seq
-  %     |   |     ├╴"("
-  %     |   |     ╰╴Seq
-  %     |   |       ├╴NT E
-  %     |   |       | ╰╴Seq
-  %     |   |       |   ├╴NT T
-  %     |   |       |   | ╰╴Seq
-  %     |   |       |   |   ├╴NT F
-  %     |   |       |   |   | ╰╴Left
-  %     |   |       |   |   |   ╰╴Seq
-  %     |   |       |   |   |     ├╴Right
-  %     |   |       |   |   |     | ╰╴Left
-  %     |   |       |   |   |     |   ╰╴"1"
-  %     |   |       |   |   |     ╰╴Star []
-  %     |   |       |   |   ╰╴Star []
-  %     |   |       |   ╰╴Star [
-  %     |   |       |     ├╴Seq
-  %     |   |       |     | ├╴"+"
-  %     |   |       |     | ╰╴NT T
-  %     |   |       |     |   ╰╴Seq
-  %     |   |       |     |     ├╴NT F
-  %     |   |       |     |     | ╰╴Left
-  %     |   |       |     |     |   ╰╴Seq
-  %     |   |       |     |     |     ├╴Right
-  %     |   |       |     |     |     | ╰╴Right
-  %     |   |       |     |     |     |   ╰╴Left
-  %     |   |       |     |     |     |     ╰╴"2"
-  %     |   |       |     |     |     ╰╴Star []
-  %     |   |       |     |     ╰╴Star []
-  %     |   |       |     ╰╴]
-  %     |   |       ╰╴")"
-  %     |   ╰╴Star [
-  %     |     ├╴Seq
-  %     |     | ├╴"*"
-  %     |     | ╰╴NT F
-  %     |     |   ╰╴Left
-  %     |     |     ╰╴Seq
-  %     |     |       ├╴Right
-  %     |     |       | ╰╴Right
-  %     |     |       |   ╰╴Right
-  %     |     |       |     ╰╴Left
-  %     |     |       |       ╰╴"3"
-  %     |     |       ╰╴Star []
-  %     |     ╰╴]
-  %     ╰╴Star []
+  the string \((1+2)*3\) and the pattern \((\text{X}:E)*\text{Y}:F\), where X 
+  and Y are pattern variables of type \(E\) and \(F\), respectively. 
+  Some things to note on the pattern are: 
+  1) The pattern \((\text{X}:E)\) has type \(F\), \((\text{X}:E):F\), since it 
+  matches with the right branch of the choice expression of rule 
+  \(F \leftarrow \text{n / '(' E ')'}\), by rule \(_{PRight}\); and
+  2) The pattern \(* \text{Y}:F\) has type \((* \text{Y}:F)^\star\), by rule 
+  \(_{PStar}\) where \(n = 1\), and matches without problems.
+  Since all components of the pattern are valid, then the whole pattern 
+  \((\text{X}:E)*\text{Y}:F\) is also valid and has type \(T\),
+  \(\{(\text{X}:E)*\text{Y}:F\}:T\).
 
+  By the concatenation rule, the opening parenthesis (`(') matches, the pattern 
+  variable X binds to expression \(1+2\), the closing parenthesis (`)') and 
+  multiplication operator (`*') also matches and finally pattern variable Y 
+  binds to \(3\).
+  The matches found are \([X \mapsto 1+2, Y \mapsto 3]\).
 \end{example}
 
 Given a match $S$ and a pattern $p$, we denote by $S[p]$ the parse tree
@@ -557,17 +495,12 @@ $e$ a parsing expression and $t$ a parse tree. If $G \vdash p : e$, $G \vdash t 
 
 \section{Implementation details}\label{sec:implementation-details}
 
-Aqui apresente, de maneira simples a estrutura do código. Se possível, utilize imagens para
-explicar a arquitetura da ferramenta.
-G: Feito 
-
 This section presents implementation details and the tool architecture. 
 Figure~\ref{fig:tool-diagram} presents a diagram of the tool structure.
 
 \begin{figure*}
   \begin{tikzpicture}[
       node distance=0.5cm and 0.5cm,
-      % every node/.style={draw, rectangle, align=center, rounded corners, minimum width=3.5cm, minimum height=1.1cm, font=\small},
       every node/.style={draw, align=center, rounded corners, minimum width=3.5cm, minimum height=1.1cm},
       ->, >=Stealth
     ]

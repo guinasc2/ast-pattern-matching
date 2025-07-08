@@ -57,17 +57,22 @@
 file          <- (blank* newline)* statement+
 statement     <- (compound / simple / comment) blank* newline*
 compound      <- function_def / if_stmt / while_stmt / for_stmt
-function_def  <- ("def" space identifier "(" space id_list? ")" space ":") > statement
-if_stmt       <- (("if" space expression ":") > statement) (elif_block / else_block)?
-elif_block    <- (("elif" space expression ":") > statement) (elif_block / else_block)?
+function_def  <- ("def" space identifier "(" space id_list? ")" space 
+                 ":") > statement
+if_stmt       <- (("if" space expression ":") > statement) 
+                 (elif_block / else_block)?
+elif_block    <- (("elif" space expression ":") > statement) 
+                 (elif_block / else_block)?
 else_block    <- ("else" space ":") > statement
 while_stmt    <- ("while" space expression ":") > statement
-for_stmt      <- ("for" space identifier space "in" space expression ":") > statement
+for_stmt      <- ("for" space identifier space "in" space expression 
+                 ":") > statement
 simple        <- import_stmt / assignment / return_stmt / expression
 return_stmt   <- "return" space expr_list
 import_stmt   <- simple_import / from_import
 simple_import <- "import" space identifier
-from_import   <- "from" space identifier space "import" space (id_list / "*")
+from_import   <- "from" space identifier space "import" space 
+                 (id_list / "*")
 assignment    <- id_list space attr space expression
 attr          <- "=" / "+=" / "-=" / "*=" / "/="
 expression    <- or_expr ("or" space or_expr)*
@@ -83,10 +88,14 @@ op_comp       <- ("==" / "!=" / "<=" / ">=" / "<" / ">") space
 op_term       <- ("+" / "-") space
 op_factor     <- ("*" / "/" / "%") space
 op_power      <- "**" space
-primary       <- function_call / array_access / "[" items? "]" / atom
-function_call <- identifier space "(" space expr_list? ")" ("." primary)?
-array_access  <- identifier space "[" space expression "]" ("." primary)?
-atom          <- "True" / "False" / "None" / number / strings / identifier
+primary       <- function_call / array_access / "[" items? "]" 
+                 / atom
+function_call <- identifier space "(" space expr_list? ")" 
+                 ("." primary)?
+array_access  <- identifier space "[" space expression "]" 
+                 ("." primary)?
+atom          <- "True" / "False" / "None" / number / strings 
+                 / identifier
 expr_list     <- expr1 space (sep expr1 space)*
 expr1         <- (single_id space "=" space)? expression
 items         <- expression (sep expression space)*

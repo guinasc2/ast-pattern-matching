@@ -1,32 +1,79 @@
 \chapter{Introduction}\label{chap:intro}
 
 Pattern matching is the act of checking a given sequence fo tokens for the presence
-of a given pattern. The match usually must be exact: ``either it
-will or will not be a match''. It is frequently used to output the locations (if any)
-of a pattern within a token sequence, output some component of the matched pattern,
-and to substitute the matching pattern with some other token sequence (i.e., search
-and replace). Patterns generally have the form of either sequences or tree structures.
-Often, patterns sequences are described using regular expressions.
+of a given pattern. The match usually must be exact: ``either it will or will 
+not be a match''. It is frequently used to output the locations (if any) of a 
+pattern within a token sequence, output some component of the matched pattern,
+and to substitute the matching pattern with some other token sequence (i.e., 
+search and replace). Patterns generally have the form of either sequences or 
+tree structures. Often, patterns sequences are described using regular expressions.
 
+Typically, programmers uses tools with support to pattern matching to try 
+understanding some piece of software, such as the semantic relationship between 
+program components that are syntactically far apart, asking questions like
+``where is this function called?'' ``Where is this variable modified?'' ``Is this
+flag always reset before entry to the initializer?'' ``Where is this record 
+allocated and initialized?''. In more flexible tools, an user-defined action can 
+be performed on each match. The action language can be used to perform additional 
+matching, process the matched component, provide specially formatted output, among 
+other things~\cite{atkinson2006-effective-pattern-matching}.
+
+Besides understanding code, pattern matching can also be used to check if a piece
+of code adheres to a predetermined style, such as using (or not) specific construction.
+It is in this context that this work was first conceived, as a way to help evaluate 
+the activities of an introductory programming course.
+Automatic code analysis tools are commonly used in educational settings to
+support the evaluation of programming assignments. While many existing tools
+focus on correctness or performance, they often overlook the importance of
+\emph{how} students \emph{solve} the given problems, particularly whether 
+they follow the concepts and constructs introduced during the course. 
+As such, in introductory programming courses, it is important not only to 
+assess whether a student's solution is correct, but also to ensure that the 
+student is applying the concepts and techniques taught in class. 
+
+The main approaches for automatically evaluating a programming exercise are 
+dynamic analysis and static analysis \cite{oliveira2015-avaliacao-automatica-programacao}. 
+Dynamic analysis compares the result produced when executing the student's 
+program with a template, called the expected solution and usually produced by a 
+program written by the teacher, to evaluate the correctness, functionality and 
+efficiency of the solution in several test cases. If approved, the exercise 
+receives maximum grade and, otherwise, minimum grade for each wrong case. Static 
+analysis evaluates the writing of the source code, observing items such as syntactic 
+programming errors such as syntactic, semantic, structural and programming style 
+errors, in addition to detecting plagiarism. Thus, it usually contemplates the 
+program construction process.
+
+Automatic code analysis can help detect when students rely on language 
+features or external solutions that bypass the intended learning objectives.
+In this work, we propose a multi-language code analysis tool based on Parsing 
+Expression Grammars (PEGs) for static analysis of the student's program, 
+capable of detecting the use of advanced or unauthorized structures and 
+constructions by students, based on patterns written by the teacher, in addition 
+to providing tips and suggestions to improve the algorithmic structure of the 
+developed solution (also written by the teacher). This tool aims to assist 
+educators in enforcing pedagogical boundaries while maintaining flexibility 
+across different programming languages.
 
 \section{Objectives}\label{sec:objectives}
 
-The main objective of this work is to formalize the semantics of pattern matching
-in syntax trees. Specifically, we plan to:
+The main objective of this work is to formalize a PEG-based pattern matching 
+semantics for syntax trees. Specifically, we plan to:
 \begin{enumerate}
-    \item Define the semantics for generating a parse tree when executing a parsing expression.
-    \item Define the semantics for pattern matching on a parse tree.
+    \item Define the semantics for generating a parse tree when executing a parsing expression
+            and prove its equivalence to PEG's semantics.
+    \item Define the semantics for pattern matching on a parse tree and prove its correctness.
     \item Prove properties of the defined semantics.
-    \item ...
+    \item Implement the formalized algorithms.
+    \item Use the developed tool in case studies.
 \end{enumerate}
 
-\section{Contributions}\label{sec:contributions}
+% \section{Contributions}\label{sec:contributions}
 
-Our contributions are:
-\begin{itemize}
-    \item A type system and operational semantics for generating a parse tree.
-    \item ...
-\end{itemize}
+% Our contributions are:
+% \begin{itemize}
+%     \item A type system and operational semantics for generating a parse tree.
+%     \item ...
+% \end{itemize}
 
 \section{Dissertation Structure}\label{sec:structure}
 
@@ -34,8 +81,9 @@ The rest of this dissertation is structured as follow: Chapter~\ref{chap:backgro
 covers the necessary background knowledge used in this work, Chapter~\ref{chap:methodology}
 presents the pattern matching and generation of parse tree, Chapter~\ref{chap:results}
 discusses some case studies using the proposed approach, Chapter~\ref{chap:future-work}
-presents the schedule of next steps, and finally Chapter~\ref{chap:conclusion} concludes
-this work.
+presents the schedule of next steps.
+% , and finally Chapter~\ref{chap:conclusion} concludes this work.
+
 The code for the parsing and pattern match of parse trees can be found on
 \url{https://github.com/guinasc2/ast-pattern-matching}.
 

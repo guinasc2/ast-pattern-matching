@@ -8,10 +8,8 @@ Related work is discussed in Section~\ref{sec:related-work}.
 Section~\ref{sec:background-conclusion} concludes the chapter.
 
 The examples in this section will make use of Pierce's
-% \cite{pierce2002-types-and-programming-languages}
+\cite{pierce2002-types-and-programming-languages}
 \(\mathbb{B}\mathbb{N}\) language for arithmetic expressions:
-\textbf{-- Quando eu faço a citação do Pierce, o projeto começa a dar erros --}
-
 \[
     \begin{array}{lcl}
         t & \to & \texttt{true} \, \mid \, \texttt{false} \,
@@ -40,13 +38,12 @@ semantics.
 
 Structural operational semantics\cite{plotkin1981-operational-semantics} (also
 called small-step semantics) defines the behaviour of a program in terms of the
-behavious of its parts, i.e., defines how the individual steps are performed.
+behaviour of its parts, i.e., defines how the individual steps are performed.
 Figure~\ref{fig:bn-operational-semantics} shows the small-step semantics for
 \(\mathbb{B}\mathbb{N}\). Judgment \(t \to t'\) means expression \(t\) reduces
 to \(t'\) in one step and \(to^\star\) represents the reflexive and transitive
 closure of \(\to\). Example~\ref{fig:bn-small-step-example} presents the
-evaluation of the term \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:
-\texttt{false}\:\texttt{else}\:\texttt{true}\)
+evaluation of the term \texttt{if iszero 0 then false else true}.
 
 \begin{figure*}[!h]
     \[
@@ -89,12 +86,12 @@ evaluation of the term \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:
 
 \begin{example}
     \label{fig:bn-small-step-example}
-    Small step evaluation of \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true}\)
+    Small step evaluation of \texttt{if iszero 0 then false else true}
 
     \[
         \begin{array}{ll}
-            \texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} & \\
-            \rightarrow\; \texttt{if}\:\texttt{true}\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} & (\text{E-IszeroZero}) \\
+            \texttt{if iszero 0 then false else true} & \\
+            \rightarrow\; \texttt{if true then false else true} & (\text{E-IszeroZero}) \\
             \rightarrow\; \texttt{false} & (\text{E-IfTrue})
         \end{array}
     \]
@@ -114,9 +111,8 @@ before actually evaluating such term. So, we need to be able to distinguish betw
 terms whose results will be a numeric value and terms whose result will be a boolean.
 What we need, then, are types and a type system. We introduce two types, \texttt{Nat}
 and \texttt{Bool}, for classifying terms this way. A type system is a set of rules on
-how the terms of a language should be typed
-% \cite{pierce2002-types-and-programming-languages}
-. Type checking is is the process of verifying if the syntax has a valid derivation
+how the terms of a language should be typed \cite{pierce2002-types-and-programming-languages}. 
+Type checking is the process of verifying if the syntax has a valid derivation
 on the type system, i.e., checking if the program has meaning.
 
 Saying that a term \(t\) has type \(T\), means that \(t\) evaluates to a value
@@ -153,11 +149,11 @@ is presented on Figure~\ref{fig:bn-typing-relation}.
 \end{figure*}
 
 \begin{example}
-    Type derivation for the term \(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true}\).
+    Type derivation for the term \texttt{if iszero 0 then false else true}.
 
     \[
         \infer[]{
-            \texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:\texttt{false}\:\texttt{else}\:\texttt{true} : \texttt{Bool}
+            \texttt{if iszero 0 then false else true} : \texttt{Bool}
         }{
             \infer[]{
                 \texttt{iszero}\:0 : \texttt{Bool}
@@ -176,10 +172,10 @@ When a term has a valid type derivation, we say it is well typed. Regardless of
 meaning, we know it produces a value. No invalid terms such as \(\texttt{succ}\:
 \texttt{true}\) or \(\texttt{pred}\:\texttt{false}\) will have a typing derivation,
 but some terms that would not get stuck may not have a type derivation, such as
-\(\texttt{if}\:\texttt{iszero}\:0\:\texttt{then}\:0\:\texttt{else}\:\texttt{true}\),
-since the second and third arguments have different types. Type systems can help
-avoid several kinds of errors, both at compile and run time, but is inevitable to
-reject some programs that would result in a value.
+\texttt{if iszero 0 then 0 else true}, since the second and third arguments have 
+different types. Type systems can help avoid several kinds of errors, both at 
+compile and run time, but is inevitable to reject some programs that would result 
+in a value.
 
 \section{An Overview of PEGs}\label{sec:pegs}
 
@@ -322,97 +318,102 @@ string. Finally, the rules for the not predicate expression, \(!\,e\), specify
 that whenever the expression \(e\) succeeds on input \(s\), \(!\,e\) fails; and when \(e\)
 fails on \(s\) we have that \(!\,e\) succeeds without consuming any input.
 
-\begin{example}
-   As an example, consider the PEG (Figure~\ref{fig:peg-math-formulas}) which
-   recognizes mathematical formulas that apply the basic four operations to
+\begin{example}\label{example:math-formulas-derivation}
+   As an example, consider the PEG (Figure~\ref{fig:peg-arith-expressions}) which
+   recognizes arithmetic expressions that apply the basic four operations to
    non-negative integers:
 
    \begin{figure*}[ht]
       \[
          \begin{array}{lcl}
-            \text{E}   & \leftarrow & \text{T ('+' T)*} \\
-            \text{T}  & \leftarrow & \text{F ('*' F)*} \\
-            \text{F} & \leftarrow & \text{[0-9]+ / '(' Expr ')'} \\
+            \text{E} & \leftarrow & \text{T ('+' T)}^\star \\
+            \text{T} & \leftarrow & \text{F ('*' F)}^\star \\
+            \text{F} & \leftarrow & \text{n / '(' E ')'} \\
          \end{array}
       \]
       \centering
-      \caption{PEG for mathematical formulas.}
-      \label{fig:peg-math-formulas}
+      \caption{PEG for arithmetic expressions.}
+      \label{fig:peg-arith-expressions}
    \end{figure*}
 
-   \textbf{-- Montar árvore de derivação da semântica para 1+2 --}
-   \textbf{-- Eu troco [0-9]+ pra n na PEG e deixo como n na árvore?
-              Ou troco pra [0-9]+ na árvore e continuo a derivação? --}
+   Consider the string \texttt{1+2}. The initial rule \texttt{E}, first tries to
+   parse a \texttt{T} that will, in turn, first try to consume a \texttt{F}, which
+   recognizes the number \texttt{'1'}. The expression '+' TIt then consume the 
+   \texttt{+} operator and tries to parse another \texttt{T}, which will consume 
+   the 2 as a \texttt{F} and goes back to \texttt{E}, that does not find another 
+   \texttt{'+'} operator and finalizes the parsing process. The derivation tree 
+   for the string \texttt{1+2} can be seen on Figure~\ref{fig:peg-math-derivation}.
+
    \begin{sidewaysfigure*}
       \footnotesize
       \[
          \infer[]{
-            \langle E, 1+2 \rangle \Rightarrow_G \langle 1+2, \epsilon \rangle
+            \langle \text{E}, 1+2 \rangle \Rightarrow_G \langle 1+2, \epsilon \rangle
          }{
             \infer[]{
-               \langle T ('+' T)^\star, 1+2 \rangle \Rightarrow_G \langle 1+2, \epsilon \rangle
+               \langle \text{T ('+' T)}^\star, 1+2 \rangle \Rightarrow_G \langle 1+2, \epsilon \rangle
             }{
                \infer[]{
-                  \langle T, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
+                  \langle \text{T}, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
                }{
                   \infer[]{
-                     \langle F ('*' F)^\star, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
+                     \langle \text{F ('*' F)}^\star, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
                   }{
                      \infer[]{
-                        \langle F, 1+2 \rangle
+                        \langle \text{F}, 1+2 \rangle
                      }{
                         \infer[]{
-                           \langle n / '(' E ')', 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
+                           \langle \text{n / '(' E ')'}, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
                         }{
                            \infer[]{
-                              \langle n, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
+                              \langle \text{n}, 1+2 \rangle \Rightarrow_G \langle 1, +2 \rangle
                            }{}
                         }
                      }
                      &
                      \infer[]{
-                        \langle ('*' F)^\star, +2 \rangle \Rightarrow_G \langle \epsilon, +2 \rangle
+                        \langle \text{('*' F)}^\star, +2 \rangle \Rightarrow_G \langle \epsilon, +2 \rangle
                      }{
                         \infer[]{
-                           \langle '*' F, +2 \rangle \Rightarrow_G \langle \bot, +2 \rangle
+                           \langle \text{'*' F}, +2 \rangle \Rightarrow_G \langle \bot, +2 \rangle
                         }{}
                      }
                   }
                }
                &
                \infer[]{
-                  \langle ('+' T)^\star, +2 \rangle \Rightarrow_G \langle +2, \epsilon \rangle
+                  \langle \text{('+' T)}^\star, +2 \rangle \Rightarrow_G \langle +2, \epsilon \rangle
                }{
                   \infer[]{
-                     \langle '+' T, +2\rangle \Rightarrow_G \langle +2, \epsilon \rangle
+                     \langle \text{'+' T}, +2\rangle \Rightarrow_G \langle +2, \epsilon \rangle
                   }{
                      \infer[]{
-                        \langle '+', +2 \rangle \Rightarrow_G \langle +, 2 \rangle
+                        \langle \text{'+'}, +2 \rangle \Rightarrow_G \langle +, 2 \rangle
                      }{}
                      &
                      \infer[]{
-                        \langle T, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
+                        \langle \text{T}, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
                      }{
                         \infer[]{
-                           \langle F ('*' F)^\star, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
+                           \langle \text{F ('*' F)}^\star, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
                         }{
                            \infer[]{
-                              \langle F, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
+                              \langle \text{F}, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
                            }{
                               \infer[]{
-                                 \langle n / '(' E ')', 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
+                                 \langle \text{n / '(' E ')'}, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
                               }{
                                  \infer[]{
-                                    \langle n, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
+                                    \langle \text{n}, 2 \rangle \Rightarrow_G \langle 2, \epsilon \rangle
                                  }{}
                               }
                            }
                            &
                            \infer[]{
-                              \langle ('*' F)^\star, \epsilon \rangle \Rightarrow_G \langle \epsilon, \epsilon \rangle
+                              \langle \text{('*' F)}^\star, \epsilon \rangle \Rightarrow_G \langle \epsilon, \epsilon \rangle
                            }{
                               \infer[]{
-                                 \langle '*' F, \epsilon \rangle \Rightarrow_G \langle \bot, \epsilon \rangle
+                                 \langle \text{'*' F}, \epsilon \rangle \Rightarrow_G \langle \bot, \epsilon \rangle
                               }{}
                            }
                         }
@@ -423,7 +424,7 @@ fails on \(s\) we have that \(!\,e\) succeeds without consuming any input.
                      \langle ('+' T)^\star, \epsilon \rangle \Rightarrow_G \langle \epsilon, \epsilon \rangle
                   }{
                      \infer[]{
-                        \langle '+' T, \epsilon \rangle \Rightarrow_G \langle \bot, \epsilon \rangle
+                        \langle \text{'+' T}, \epsilon \rangle \Rightarrow_G \langle \bot, \epsilon \rangle
                      }{}
                   }
                }
@@ -434,53 +435,6 @@ fails on \(s\) we have that \(!\,e\) succeeds without consuming any input.
       \caption{Semantic derivation for expression `1+2*3'}
       \label{fig:peg-math-derivation}
    \end{sidewaysfigure*}
-
-   Consider the string \texttt{1+2}. The initial rule \texttt{E}, first tries to
-   parse a \texttt{T} that will, in turn, first try to consume a \texttt{F}, which
-   recognizes the number \texttt{'1'}. Since the \texttt{T} rule does not consume
-   a \texttt{'*'}, it returns back to \texttt{E}. It then finds the \texttt{'+'}
-   operator and tries to parse another \texttt{T}, which will consume the 2 as a
-   \texttt{F} and goes back to \texttt{E}, that does not find another \texttt{'+'}
-   operator and finalizes the parsing process. The derivation tree for the string
-   \texttt{1+2} can be seen on Figure~\ref{fig:peg-math-derivation}.
-
-   % \begin{figure*}
-   %    \begin{tikzpicture}[
-   %       level distance=0.8cm,
-   %       sibling distance=2cm,
-   %       every node/.style={
-   %          draw,
-   %          shape=ellipse,
-   %          minimum height=7mm,
-   %          minimum width=7mm,
-   %          inner sep=2pt,
-   %          anchor=north
-   %       }
-   %    ]
-
-   %       \node {Expr}
-   %       child {node {E}
-   %          child {node {T}
-   %             child {node {F}
-   %                child {node {1}}
-   %             }
-   %          }
-   %          child {node {+}}
-   %          child {node {T}
-   %             child {node {F}
-   %                child {node {2}}
-   %             }
-   %             child {node {*} }
-   %             child {node {F}
-   %                child {node {3}}
-   %             }
-   %          }
-   %       };
-   %    \end{tikzpicture}
-   %    \centering
-   %    \caption{Generated abstract syntax tree for the expression 1+2*3}
-   %    \label{fig:generated-ast}
-   % \end{figure*}
 \end{example}
 
 \section{Related work}\label{sec:related-work}
@@ -576,7 +530,7 @@ of these trees.
 
 \section{Conclusion}\label{sec:background-conclusion}
 
-This chapter presents the theoretical framework for this work: initially, concepts
+This chapter presented the theoretical framework for this work: initially, concepts
 about type systems and operational semantics were reviewed. Next, the concept
 of PEGs and their operational semantics were presented. Finally, works related
 to source code analysis and pattern matching were presented.

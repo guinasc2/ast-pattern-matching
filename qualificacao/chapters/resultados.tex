@@ -1,7 +1,7 @@
 \chapter{Experiments}\label{chap:results}
 
 This chapter presents the results obtained so far. Section~\ref{sec:case-studies}
-presents some case studies to evaluate the capabilities of the tool (library?) developed.
+presents some case studies to evaluate the capabilities of the tool developed.
 Section~\ref{sec:results-conclusion} concludes the chapter.
 
 \section{Case studies}\label{sec:case-studies}
@@ -96,7 +96,7 @@ to the use of unauthorized constructs.
 \subsubsection{Checking for specific constructs}
 
 Consider a question that asks the student to implement a program that
-calculates the factorial of an integer \(n\) entered by the user.
+calculates the factorial of an integer \(n\) provided by the user.
 The expected solution is for the student to use a loop, such as \textit{while},
 to implement the successive multiplication of the numbers, as in the code
 presented below:
@@ -125,8 +125,8 @@ to practice the repetition loop, as shown below.
 \end{lstlisting}
 
 
-The pattern presented below is capable of identifying the presence of a call
-to the \(factorial\) function.
+The pattern presented below is capable of identifying a call to the 
+\(factorial\) function.
 
 % \[
 %     \begin{array}{l}
@@ -289,6 +289,12 @@ make a suggestion for improving their solution.
 
 \section{Conclusion}\label{sec:results-conclusion}
 
----
+This chapter presented several case studies, including the generation of a call 
+graph for a source code, showing that the patterns required for this are relatively 
+simple, the validation of the answer submitted by a student to a question, in 
+order to reject unauthorized constructions, and the rewriting of source code, 
+which can be used to identify points of improvement in the algorithmic structure 
+of the code submitted by the student, for example, to simplify the structure or 
+separate reading from data processing.
 
 \cleardoublepage

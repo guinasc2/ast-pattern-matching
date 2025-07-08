@@ -25,9 +25,10 @@
 \usepackage{tikz}
 \usepackage{listings}
 \usepackage{rotating}
+\usepackage{stix}
 
-\usetikzlibrary{trees}
-\usetikzlibrary{shapes}
+\usetikzlibrary{trees, shapes}
+\usetikzlibrary{arrows.meta, positioning}
 
 \captionsetup{compatibility=false}
 
@@ -37,13 +38,13 @@
 \theoremstyle{definition}
 \newtheorem{example}{Example}
 
-\theoremstyle{theorem}
+\theoremstyle{plain}
 \newtheorem{lemma}{Lemma}
 
-\theoremstyle{theorem}
+\theoremstyle{plain}
 \newtheorem{theorem}{Theorem}
 
-\theoremstyle{theorem}
+\theoremstyle{plain}
 \newtheorem{corollary}{Corollary}
 
 
@@ -59,7 +60,8 @@
   \advisor{Prof.}{Rodrigo Geraldo}{Ribeiro}{Dr.}
 
   \examiner{Prof.}{Rodrigo Geraldo}{Ribeiro}{Dr.}
-  \examiner{Prof.}{---}{Dr.}
+  \examiner{Prof.ª}{Aline Norberta de Brito}{Dr.ª}
+  \examiner{Prof.}{Reinaldo Silva Fortes}{Dr.}
   \department{DECOM}
 
   \keyword{---}
@@ -91,7 +93,7 @@
   % \cleardoublepage
   \include{chapters/trabalhos-futuros}
   % \cleardoublepage
-  \include{chapters/conclusoes}
+  % \include{chapters/conclusoes}
 
   \backmatter
   \bibliographystyle{coppe-unsrt}

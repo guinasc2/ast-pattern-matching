@@ -1,13 +1,15 @@
 \chapter{Methodology}\label{chap:methodology}
 
-RESCREVER ISSO para estrutura atual do capítulo
+RESCREVER ISSO para estrutura atual do capítulo.
+G: Feito.
 
 This chapter presents the proposal of the pattern matching algorithm developed
 during the work, as well as the  current state of its implementation.
-Section~\ref{sec:parse-tress} details
-the execution of a PEG for generating a parse tree and how pattern matching works.
-Section~\ref{sec:implementation-details} discusses some implementation details.
-Section~\ref{sec:methodology-conclusion} concludes the chapter.
+Section~\ref{sec:parse-tress} details the semantics for producing a parse tree
+from a parsing expression and their relation. Section~\ref{sec:patterns} presents 
+the syntax and semantics for parse tree patterns, along with a typing (and subtyping)
+relation. Section~\ref{sec:implementation-details} discusses some implementation
+details. Finally, Section~\ref{sec:methodology-conclusion} concludes the chapter.
 
 \section{Parse trees}\label{sec:parse-tress}
 
@@ -17,7 +19,7 @@ tree syntax and a PEG semantics which produces, as a result, such
 trees. Next, we present a typing relation which assigns a parsing
 expression for a given tree. Such step is necessary to formally
 state the equivalence between our proposed tree-producing semantics
-and PEG original semantics proposed by Ford~\cite{Ford04}.
+and PEG original semantics proposed by Ford~\cite{ford2004-peg}.
 
 Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, the meta-variable \(a \in \Sigma\) an
 arbitrary alphabet symbol, \(A \in V\) a variable and \(e\) a parsing expression.
@@ -26,7 +28,7 @@ The following context-free grammar defines the syntax of a parse tree:
    \begin{array}{lcl}
       t & \to & \hat{\epsilon} \, \mid \, \hat{a} \, \mid \, A@t\,
                     \mid \, \langle t_1, t_2 \rangle\,
-                    \mid \, L(e,t) \, \mid \, R(e,t) \, \mid \, [\,] \,\mid\,t:t\,
+                    \mid \, L(e,t) \, \mid \, R(e,t) \, \mid \, [\,] \,\mid\,t \typecolon t\,
                     \mid \, \eta \\
    \end{array}
 \]
@@ -42,22 +44,22 @@ with \(L \: t\) for the left one and \(R \: t\) for the right one,
 % \(L \: t\) represents that the first expression in an ordered choice
 % succeeded, \(R \: t\) represents that the second expression in an ordered choice
 % succeeded,
-\([]\) is an empty list of trees for $e$ and \(t_1 : t_2\) denotes a list of
+\([]\) is an empty list of trees for $e$ and \(t_1  \typecolon  t_2\) denotes a list of
 trees in which $t_1$ is a tree for $e$ and $t_2$ is a tree for $e^*$. Finally,
 \(\eta\) represents that a not
 predicate was successful.
 
 Executing a parsing expressions produces a parsing tree and is defined by an
 inductively defined judgment that relates pairs formed by a parsing expression
-and an input string to pairs formed by the generated tree and the remaining string.
+and an input string to pairs formed by the produced tree and the remaining string.
 Notation \((e,s_ps_r) \Downarrow_G (t,s_r)\) denote that parsing expression \(e\)
-consumes the prefix \(s_p\) and generates the parse tree \(t\) from the input string
+consumes the prefix \(s_p\) and produces the parse tree \(t\) from the input string
 \(s_ps_r\) leaving the suffix \(s_r\). The notation \((e,s) \Downarrow_G \bot\)
 denote the fact that \(s\) cannot be parsed by \(e\). We let meta-variable \(r\)
 denote an arbitrary parsing result, i.e., either \(r\) is a pair \((t,s_r)\) or
 \(\bot\). We say that an expression \(e\) fails if its execution over an input
 produces \(\bot\); otherwise, it succeeds. Figure~\ref{fig:peg-tree-semantics}
-defines the PEG semantics for tree generation.
+defines the PEG semantics for production of a tree.
 
 \begin{figure}[H]
    \[
@@ -85,7 +87,7 @@ defines the PEG semantics for tree generation.
                                    (e_2,s_p\,s_r)\Downarrow_G t}
          } \\ \\
          \multicolumn{2}{c}{
-            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1 : t_2,s_r)}
+            \infer[_{\{Star_{rec}\}}]{(e^\star,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1  \typecolon  t_2,s_r)}
                                  {(e,s_{p_1}s_{p_2}s_r) \Downarrow_G (t_1,s_{p_2}s_r) &
                                   (e^\star, s_{p_2}s_r) \Downarrow_G (t_2,s_r)}
          } \\ \\
@@ -117,7 +119,7 @@ Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
       \infer[_{\{TChr\}}]{G\vdash \hat{a} : a}{} \\ \\
       \infer[_{\{TVar\}}]{ G \vdash A@t : A}
                       {A \leftarrow e \in R(G) & G\vdash t : e} &
-      \infer[_{\{TNot\}}]{G\vdash \eta : ! e}{}\\ \\
+      \infer[_{\{TNot\}}]{G\vdash \eta :\: ! e}{}\\ \\
       \infer[_{\{TCat\}}]{G\vdash \langle t_1, t_2\rangle : e_1\,e_2}
                       {G\vdash  t_1 : e_1 & G\vdash t_2 : e_2} &
       \infer[_{\{TLeft\}}]{G\vdash L(e_2,t) : e_1 / e_2}
@@ -126,7 +128,7 @@ Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
                        {G\vdash t : e_2} &
       \infer[_{\{TNil\}}]{G \vdash [] : e^*}{}\\ \\
       \multicolumn{2}{c}{
-        \infer[_{\{TCons\}}]{G \vdash t_1 : t_2 : e^*}
+        \infer[_{\{TCons\}}]{G \vdash t_1  \typecolon  t_2 : e^*}
                          {G\vdash t_1 : e &
                           G \vdash t_2 : e^*}
       }
@@ -138,12 +140,25 @@ Figure~\ref{fig:tree-typing} presents the rules of tree typing relation.
 \end{figure}
 
 INSERIR TEXTO EXPLICANDO CADA REGRA
+G: Feito.
 
+Rule \(_{TEps}\) means that the tree \(\hat{\epsilon}\) has type \(\epsilon\).
+Rule \(_{TChr}\) means that the tree \(\hat{a}\) has type equal to the char consumed.
+Rule \(_{TVar}\) specifies that a tree \(t\) has type \(A\) when there is a rule 
+\(A \leftarrow e\) in the set of rules from grammar \(G\) and \(t\) is produced
+by \(e\). Rule \(_{TNot}\) means that tree \(\eta\) has type \(!e\) for all \(e\). 
+Rule \(_{TCat}\) specifies that a tree \(\langle t_1, t_2\rangle\) has type 
+\(e_1\:e_2\) if \(t_1\) and \(t_2\) have types \(e_1\) and \(e_2\), respectively. 
+Rules \(_{TLeft}\) and \(_{TRight}\) says that a tree \(t\) has type \(e_1 / e_2\) 
+if t has type \(e_1\) or t has type \(e_2\). Rules \(_{TNil}\) means that tree 
+\([]\) has type \(e^\star\) for all \(e\) and \(t_1  \typecolon  t_2\) has type \(e^\star\) 
+if \(t_1\) has type \(e\) and \(t_2\) has type \(e^\star\).
+ 
 Next, we need to show that our tree producing semantics is equivalent to
 the original semantics for PEGs. Intuitively, our trees are a strutured
 representation of the prefix parsed by a grammar. We name the textual
 representation of a parse tree as its flattening which is defined
-by recursion on the structure of the parse tree (Figure~\cite{fig:flattening-tree}).
+by recursion on the structure of the parse tree (Figure~\ref{fig:flattening-tree}).
 
 \begin{figure}[H]
   \[
@@ -155,7 +170,7 @@ by recursion on the structure of the parse tree (Figure~\cite{fig:flattening-tre
       |L\:t| & = & |t|\\
       |R\:t| & = & |t|\\
       |[]| & = & \epsilon \\
-      |t_1 : t_2| & = & |t_1|\,|t_2|\\
+      |t_1  \typecolon  t_2| & = & |t_1|\,|t_2|\\
     \end{array}
   \]
   \centering
@@ -164,6 +179,14 @@ by recursion on the structure of the parse tree (Figure~\cite{fig:flattening-tre
 \end{figure}
 
 EXPLICAR A FLATTENING.
+G: Feito.
+
+Flattening a parse tree essentially means to collapse the tree's structure into a 
+a string, containing the characters at the tree's leaves. \(\hat{\epsilon}\) and
+\([]\) both flattens to empty string \(\epsilon\) and \(\hat{a}\) flattens to 
+symbol \(a\), while \(A@t\) flattens \(t\). Flattening both \(\langle t_1, t_2 
+\rangle\) and \(t_1  \typecolon  t_2\) means concatening the flatenning of \(t_1\) 
+and of \(t_2\), while flattening \(L\:t\) and \(R\:t\) means flattening \(t\) directly. 
 
 The typing relation specifies what kind of parse trees are possible to be
 constructed for a given parsing expression. Using the flatenning function,
@@ -182,7 +205,7 @@ The next theorem presents this result.
 In the next section, we use parse trees and its semantics to formally define
 a pattern matching algorithm.
 
-\section{Parse tree patterns and its semantics}
+\section{Parse tree patterns and its semantics}\label{sec:patterns}
 
 We start this section presenting pattern syntax and its typing relation.
 Next, we present a subtyping relation between parsing expression which allow us
@@ -205,12 +228,12 @@ The syntax of pattern is presented next.
 \]
 Where \(\epsilon\) is a pattern that matches with the tree of
 empty string (\(\hat{\epsilon}\)),
-\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
+\(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A@p\) matches
 with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
 \(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
 or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
-as possible, \(!p\) matches only if \(p\) does not matches. \(M : e\) is a meta-variable
-that matches with any tree \(t : e\).
+as possible, \(!p\) matches only if \(p\) does not matches. \(M : e\) is a pattern
+variable that matches with any tree \(t : e\).
 
 Since patterns are similar to trees, we also define a typing relation for patterns.
 
@@ -236,9 +259,28 @@ Since patterns are similar to trees, we also define a typing relation for patter
   \label{fig:pattern-typing}
 \end{figure}
 
-\subsection{Subtyping and for patterns}
+% \subsection{Subtyping for and for patterns}
+\subsection{Subtyping for parsing expressions and patterns}
 
 When specifying patterns over choice expressions ... EXPLICAR o motivo do subtyping
+G: Feito. Pro exemplo eu estava pensando em usar o próprio exemplo de um casamento
+que teria mais pra frente, pois teria a coerção nele.
+
+When specifying patterns over choice expressions, we may want to match against 
+a specific branch of a choice. Instead of specifying a choice pattern that will 
+fail for all other branches besides the intended one, we would like to specify 
+one single pattern that would match only with the intended branch, decreasing 
+the size of the written pattern. 
+Consider the PEG shown in Figure~\ref{fig:peg-arith-expressions}. If we want to, 
+e.g., match a multiplication between a parenthesized expressions and a number, 
+we would have to write two choice patterns for rule F: one that accepts a number, 
+but reject a parenthesized expression (e.g. \(V_1:n / \bot_E\)) and one the rejects 
+a number, but accepts a parenthesized expression (e.g. \(\bot_n / '(' V_2:E ')'\)).
+Instead, it would be easir to just specify the patterns that matches against numbers
+(\(V_1:n\)) and against parenthesized expressions (\(V_2:E\)) and let the algorithm
+fill the missing part.
+To do this, we introduce a subtyping relation and subtype-based coercion both 
+for parsing expressions and patterns.
 
 We let notation $e <: e'$ denote that expression $e$ is a subtype of expression $e'$.
 The idea of the subtyping relation is to express that is possible to ``coerce'' a
@@ -356,7 +398,7 @@ The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
     \begin{array}{cc}
       \infer[_{\{PPVar\}}]{G\vdash M_1 : e ; t_1 \leadsto [M_1 \mapsto t_1]}{G \vdash t_1 : e} &
       \infer[_{\{PEps\}}]{G \vdash \epsilon : \epsilon ; \hat{\epsilon} \leadsto \bullet}{} \\ \\
-      \infer[_{\{PChr\}}]{G\vdash a : a ; \hat{a} \leadsto \emptyset}{} &
+      \infer[_{\{PChr\}}]{G\vdash a : a ; \hat{a} \leadsto \bullet}{} &
       \infer[_{\{PChrf\}}]{G \vdash a : a  ; \hat{b} \leadsto \bot}{a \neq b}\\ \\
         \infer[_{\{PVar\}}]{G\vdash A@p : A ; A@t \leadsto r}
                         {\begin{array}{c}
@@ -376,27 +418,17 @@ The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
                             G\vdash p_1 :e_1 ; t_1 \leadsto S_1 \\
                             G\vdash p_2 :e_2 ; t_2\leadsto \bot
                          \end{array}} \\ \\
-      \infer[_{\{PLeft\}}]{G \vdash p_1\,/\,p_2 ;: e_1\,/\,e_2\ ;L(e_2, t) \leadsto S}
-                       {G\vdash p_1 :e_1 ; t\leadsto S} &
-      \infer[_{\{PLeft1\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2 ; L(e_2, t) \leadsto \bot}
-                       {G\vdash p_1 :e_1 ; t \leadsto \bot} \\ \\
-      \infer[_{\{PRight\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto S}
-                       {\begin{array}{c}
-                          G\vdash p_1 :e_1 ; t \leadsto \bot \\
-                          G\vdash p_2 :e_2 ; t\leadsto S
-                       \end{array}} &
-      \infer[_{\{PRight1\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto r}
-                       {\begin{array}{c}
-                          G\vdash p_1 : e_1 ; t \leadsto \bot\\
-                          G\vdash p_2 : e_2; t \leadsto r
-                        \end{array}} \\ \\
+      \infer[_{\{PLeft\}}]{G \vdash p_1\,/\,p_2 ;: e_1\,/\,e_2\ ;L(e_2, t) \leadsto r}
+                       {G\vdash p_1 :e_1 ; t\leadsto r} &
+      \infer[_{\{PRight\}}]{G \vdash p_1\,/\,p_2 : e_1\,/\,e_2; R(e_1, t) \leadsto r}
+                       {G\vdash p_2 : e_2; t \leadsto r} \\ \\
       \infer[_{\{PNot\}}]{G \vdash !\,p : ! e ; \eta \leadsto \bullet}
                       {G \vdash p : e ; t \leadsto \bot} &
       \infer[_{\{PNot1\}}]{G \vdash !\,p : ! e ; \eta \leadsto \bot}
                        {G \vdash p : e ; \eta \leadsto S}\\ \\
 
       \infer[_{\{PStarn\}}]{G \vdash p^\star : e^\star ; [] \leadsto \bullet}{} &
-      \infer[_{\{PStarf\}}]{G\vdash p^\star : e^\star ; t_1 : t_2 \leadsto S_1 \uplus S_2}
+      \infer[_{\{PStarf\}}]{G\vdash p^\star : e^\star ; t_1  \typecolon  t_2 \leadsto S_1 \uplus S_2}
                         {\begin{array}{c}
                            G \vdash p : e ; t_1 \leadsto S_1\\
                            G \vdash p^\star : e^\star ; t_2 \leadsto S_2
@@ -409,6 +441,92 @@ The algorithm is presented in Figure~\ref{fig:pattern-semantics}.
 \end{figure}
 
 EXPLICAR REGRAS e APRESENTAR UM EXEMPLO.
+G: Expliquei as regras, mas estou tendo dúvida na melhor forma de representar a 
+parse tree e o padrão.
+
+Rule \(_{PPVar}\) specifies that a pattern variable \(M : e\) matches with any
+tree \(t\) of type \(e\) and binds \(t\) to \(M\). Rule \(_{PEps}\) specifies 
+that the pattern \(\epsilon\) matches only with with tree \(\hat{\epsilon}\),
+but does not bind anything. Rules \(_{PChr}\) and \(_{PChrf}\) says that 
+a pattern of type \(a\) matches only with the tree \(\hat{a}\) and fails if 
+matched against any other symbol. Rule \(_{PVar}\) specifies that pattern \(A@p\)
+matches only if there is a rule \(A \leftarrow e \in R(G)\) and \(p\) has type \(e\).
+Rules \(_{PCat1}\) and \(_{PCat2}\) says that if either \(p_1\) or \(p_2\) in
+sequence \(p_1\:p_2\) does not match, then the whole sequence does not match either.
+Otherwise, rule \(_{PCat}\) specifies that the the resulting binds are concatenated.
+The rules for choice \(_{PLeft}\) and \(_{PRight}\) specifies that the left branch 
+of a pattern matches only with a tree \(L\:t\) and the right branch matches only
+with a tree \(R\:t\). Rules for the negation predicate \(_{PNot}\) and \(_{PNot1}\)
+says that \(!p\) matches with \(\eta\) only if pattern \(p\) fails to match 
+and it does not generate any binds, otherwise \(!p\) fails.
+Rule \(_{PStarn}\) specifies that pattern \(p^\star\) always matches against \([]\),
+but does not bind anything and rule \(_{Pstarf}\) says that \(p^\star\) matches 
+with \(t_1 \typecolon t_2\) if \(p\) matches with \(t_1\) and \(p^\star\) matches 
+with \(t_2\), i.e. it tries to match \(p\) with every tree in the list, and 
+concatenates all the resulting binds in each match.
+
+\begin{example}
+  Consider the PEG for arithmetic expressions shown in Figure~\ref{fig:peg-arith-expressions}, 
+  the string \((1+2)*3\) and its parse tree and the pattern 
+  
+  \textbf{-- Não sei a melhor forma de escrever a parse tree e o padrão aqui --}
+  
+  % Esse é um possível padrão:
+  %   pattern a : E := (T := (F := ("(" #m:E ")") "*" F := ("3" ε)) ε)
+  % Essa é a parse tree que a ferramenta gera:
+  %   NT E
+  %   ╰╴Seq
+  %     ├╴NT T
+  %     | ╰╴Seq
+  %     |   ├╴NT F
+  %     |   | ╰╴Right
+  %     |   |   ╰╴Seq
+  %     |   |     ├╴"("
+  %     |   |     ╰╴Seq
+  %     |   |       ├╴NT E
+  %     |   |       | ╰╴Seq
+  %     |   |       |   ├╴NT T
+  %     |   |       |   | ╰╴Seq
+  %     |   |       |   |   ├╴NT F
+  %     |   |       |   |   | ╰╴Left
+  %     |   |       |   |   |   ╰╴Seq
+  %     |   |       |   |   |     ├╴Right
+  %     |   |       |   |   |     | ╰╴Left
+  %     |   |       |   |   |     |   ╰╴"1"
+  %     |   |       |   |   |     ╰╴Star []
+  %     |   |       |   |   ╰╴Star []
+  %     |   |       |   ╰╴Star [
+  %     |   |       |     ├╴Seq
+  %     |   |       |     | ├╴"+"
+  %     |   |       |     | ╰╴NT T
+  %     |   |       |     |   ╰╴Seq
+  %     |   |       |     |     ├╴NT F
+  %     |   |       |     |     | ╰╴Left
+  %     |   |       |     |     |   ╰╴Seq
+  %     |   |       |     |     |     ├╴Right
+  %     |   |       |     |     |     | ╰╴Right
+  %     |   |       |     |     |     |   ╰╴Left
+  %     |   |       |     |     |     |     ╰╴"2"
+  %     |   |       |     |     |     ╰╴Star []
+  %     |   |       |     |     ╰╴Star []
+  %     |   |       |     ╰╴]
+  %     |   |       ╰╴")"
+  %     |   ╰╴Star [
+  %     |     ├╴Seq
+  %     |     | ├╴"*"
+  %     |     | ╰╴NT F
+  %     |     |   ╰╴Left
+  %     |     |     ╰╴Seq
+  %     |     |       ├╴Right
+  %     |     |       | ╰╴Right
+  %     |     |       |   ╰╴Right
+  %     |     |       |     ╰╴Left
+  %     |     |       |       ╰╴"3"
+  %     |     |       ╰╴Star []
+  %     |     ╰╴]
+  %     ╰╴Star []
+
+\end{example}
 
 Given a match $S$ and a pattern $p$, we denote by $S[p]$ the parse tree
 obtained by replacing pattern variables in p by its corresponding tree
@@ -437,199 +555,99 @@ $e$ a parsing expression and $t$ a parse tree. If $G \vdash p : e$, $G \vdash t 
   Immediate from theorems~\ref{thm:matching-correct} and~\ref{thm:coerce-correct}.
 \end{proof}
 
-\section{Implementation details}
+\section{Implementation details}\label{sec:implementation-details}
 
 Aqui apresente, de maneira simples a estrutura do código. Se possível, utilize imagens para
 explicar a arquitetura da ferramenta.
+G: Feito 
 
+This section presents implementation details and the tool architecture. 
+Figure~\ref{fig:tool-diagram} presents a diagram of the tool structure.
 
-% Let \(G = (V, \Sigma, R, e_s)\) be an arbitrary PEG, \(\Theta\) a finite set
-% of identified patterns, \(U\) a finite set of variables, the meta-variable
-% \(a \in \Sigma\) an arbitrary alphabet symbol, \(A \in V\) a variable and
-% \(e\) a parsing expression.
+\begin{figure*}
+  \begin{tikzpicture}[
+      node distance=0.5cm and 0.5cm,
+      % every node/.style={draw, rectangle, align=center, rounded corners, minimum width=3.5cm, minimum height=1.1cm, font=\small},
+      every node/.style={draw, align=center, rounded corners, minimum width=3.5cm, minimum height=1.1cm},
+      ->, >=Stealth
+    ]
+  
+    \node (A) at (0,0) {A: PEG input file};
+    \node (D) at (4.1,0) {D: Patterns input file};
+  
+    \node[below=of A] (B) {B: PEG parsing};
+    \node[below=of D] (E) {E: Patterns parsing};
+  
+    \node[below=of B] (C) {C: PEG validation};
+    \node[below=of E] (F) {F: Patterns validation};
+  
+    \node[below=of C] (G) {G: Parser generation\\with PEG};
+    \node[left=of G] (H) {H: Source code\\input file};
+  
+    \node[below=of H] (I) {I: Input parsing};
+    \node[below=of G] (J) {J: Execution of the\\matching algorithm};
+  
+    \node[below left=0.5cm and 0.5cm of J] (K) {
+      K: Execution of the rewrite\\algorithm based on\\another pattern
+    };
+    \node[below right=0.5cm and 0.5cm of J] (L) {
+      L: Result available for user\\processing as desired
+    };
+  
+    \draw (A) -- (B);
+    \draw (B) -- (C);
+    \draw (C) -- (G);
+    \draw (D) -- (E);
+    \draw (E) -- (F);
+  
+    \draw (C) -- (F);
+  
+    \draw (H) -- (I);
+  
+    \draw (G) -- (I);
+    \draw (I) -- (J);
+  
+    \draw (F) |- (J);  % faz a curva
+  
+    \draw (J) -- (K);
+    \draw (J) -- (L);
+  
+  \end{tikzpicture}
+  \centering
+  \caption{Tool diagram}
+  \label{fig:tool-diagram}
+\end{figure*}
 
-% \begin{definition}[Identified pattern]
-%     An identified pattern is a pair \((i, p)\) where \(i\) is an identifier and
-%     \(p\) is a pattern.
-% \end{definition}
-%
-% Let \(\Theta\) a finite set of identified patterns, \(U\) a finite set of
-% variables and \(A \in V\) a variable.
-% Each identified pattern \(p_i \in \Theta\) is a pair \((I, p)\), where \(I \in U\)
-% and \(p\) is a pattern.
-% The following context-free grammar defines the syntax of a pattern:
-% \[
-%     \begin{array}{lcl}
-%         p & \to & \epsilon \, \mid \, a \, \mid \, A\, \mid \,p_1\:p_2\,
-%                 \mid\,p_1\,/\,p_2\, \mid \,p^\star\, \mid \,!\,p
-%                 \mid \, M\, \mid \, I\,\\
-%     \end{array}
-% \]
-% Where \(\epsilon\) is a pattern that matches with the tree of empty string (\(\hat{\epsilon}\)),
-% \(a\) matches only with the tree of the symbol \(a\) (\(\hat{a}\)), \(A\) matches
-% with a subtree of type \(e\) and \((A, e) \in R\), \(p_1\:p_2\) matches if both
-% \(p_1\) and \(p_2\) matches sequentially. \(p_1\,/\,p_2\) matches if one of \(p_1\)
-% or \(p_2\) matches, \(p^\star\) will try to match \(p\) sequentially as many times
-% as possible, \(!p\) matches only if \(p\) does not matches. \(M\) is a meta-variable
-% that, given a variable \(A\), matches with any tree \(t : e\) where \((A, e) \in R\)
-% and \(I\) is a reference to another pattern \(p'\) where \((I, p') \in \Theta\).
-%
-% Figure~\ref{fig:pattern-semantics} defines the pattern semantics.
-%
-% \begin{figure*}[!ht]
-%     \[
-%         \begin{array}{ccc}
-%             \infer[_{\{Eps\}}]{\Theta, G \vdash \epsilon}{} &
-%             \infer[_{\{ChrS\}}]{\Theta, G \vdash a}{} &
-%             \infer[_{\{Var\}}]{\Theta, G \vdash A}{A \in V}
-%             \\ \\
-%             \infer[_{\{Sequence\}}]{\Theta, G \vdash p_1\:p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
-%             \infer[_{\{Choice\}}]{\Theta, G \vdash p_1 \,/\, p_2}{\Theta, G \vdash p_1 & \Theta, G \vdash p_2} &
-%             \infer[_{\{Star\}}]{\Theta, G \vdash p^\star}{\Theta, G \vdash p}
-%             \\ \\
-%             \infer[_{\{Not\}}]{\Theta, G \vdash !p}{\Theta, G \vdash p} &
-%             \infer[_{\{MetaVar\}}]{\Theta, G \vdash M}{\exists e. M : e \land A \leftarrow e \in R} &
-%             \infer[_{\{Ref\}}]{\Theta, G \vdash I}{\exists e. \Theta(I) = e}
-%         \end{array}
-%     \]
-%     \centering
-%     \caption{Patterns semantics.}
-%     \label{fig:pattern-semantics}
-% \end{figure*}
-%
-% \begin{definition}[Valid pattern with respect to a tree]
-%     We say that a pattern \(p\) is valid with respect to a tree \(t\), \(p \sim t\),
-%     if and only if \(\exists e . p : e \land t : e\).
-% \end{definition}
-%
-% We also present a type coercion for parsing expressions.
-% \begin{figure*}[ht]
-%     \[
-%         \begin{array}{ccc}
-%             \infer[_{\{Reflexive\}}]{e <: e}{} &
-%             \multicolumn{2}{c}{
-%                 \infer[_{\{Transitive\}}]{e_1 <: e_3}{e_1 <: e_2 & e_2 <: e_3}
-%             } \\ \\
-%
-%             \infer[_{\{Alt_{Left}\}}]{e_1 <: e_1 / e_2}{} &
-%             \infer[_{\{Alt_{Right}\}}]{e_2 <: e_1 / e_2}{} &
-%             \infer[_{\{Star\}}]{e^n <: e^\star}{n \geq 1}
-%         \end{array}
-%     \]
-%     \centering
-%     \caption{Subtype relations for parsing expressions}
-%     \label{fig:subtype-relations}
-% \end{figure*}
-%
-% We present the syntax for terms of subtyping.
-% \[
-%    \begin{array}{lcl}
-%       p & \to & \epsilon \, \mid \, a \, \mid \, A \,
-%                     \mid \,  p_1\:p_2 \, \mid \,  p_1 / p_2 \,
-%                     \mid \, L\:p \, \mid \, R\:p \,
-%                     \mid \, p^\star \, \mid \, [p] \,
-%                     \mid \, !\,p \, \mid \, M \\
-%    \end{array}
-% \]
-% Of note, are the production rules \(L\:p\), \(R\:p\) and \([p]\) which represents,
-% respectively, the proof that the left expression in a choice operator is a subtype
-% of the choice, the proof that the right expression in a choice operator is a subtype
-% of the choice, and the proof that a list (possibly empty) of patterns is a subtype
-% of the \(\star\) operator.
-%
-% \begin{figure*}[ht]
-%     \[
-%         \begin{array}{ccc}
-%             \multicolumn{3}{c}{
-%                 \infer[_{Pattern}]
-%                     {p' \sim t}
-%                     {p : e & e <: e' & \exists p' . p' = C(p, e <: e') & \forall t. t:e'}
-%             }
-%         \end{array}
-%     \]
-%     \centering
-%     \caption{Pattern coercion}
-%     \label{fig:pattern-coercion}
-% \end{figure*}
-% Where \(C\) is a resursively defined function that receives a pattern and a proof
-% that the pattern is valid and returns a corrected pattern and is defined as follows:
-% \[
-%     \begin{array}{ll}
-%         C(\epsilon, \epsilon)             & = \epsilon \\
-%         C(a, a)                           & = a \\
-%         C(a, a')                          & = \bot\text{, if } a \neq a' \\
-%         C((A\:p), (A\:p'))                & = A C(p, p') \\
-%         C((A\:p), (A'\:p'))               & = \bot\text{, if } A \neq A' \\
-%         C(M, M)                           & = M \\
-%         C(M, M')                          & = \bot\text{, if } M \neq M' \\
-%         C(p_1\:p_2, p_1'\:p_2')           & = C(p_1, p_1')\:C(p_2, p_2') \\
-%         C(\epsilon, xs))                  & = [] \\
-%         C(p, [x])                         & = [C(p, x)] \\
-%         C(p_1\:p_2, x:xs)                 & = C(p_1, x) \: C(p_2, xs) \\
-%         C(p_1 \,/\, p_2, p_1' \,/\, p_2') & = C(p_1, p_1') / C(p_2, p_2') \\
-%         C(p, L p')                        & = C(p, p') / !\,\epsilon \\
-%         C(p, R p')                        & = !\,\epsilon / C(p, p') \\
-%         C(p^\star, {p'}^\star)            & = (C(p, p'))^\star \\
-%         C(!\,p, !\,p')                    & = !\,C(p, p') \\
-%     \end{array}
-% \]
-%
-%
-% \textbf{-- Escrever regras de casamento --}
-% \begin{figure*}[ht]
-%     \[
-%         \begin{array}{ccc}
-%             % \infer[_{\{Eps\}}]{\epsilon \sim \epsilon}{} &
-%
-%             % \infer[_{\{ChrS\}}]{a \sim a}{} &
-%
-%             % \infer[_{\{Var\}}]{A \sim A}{} \\ \\
-%
-%             % \infer[_{\{Seq\}}]
-%             %     {p_1\:p_2 \sim t_1\:t_2}
-%             %     {p_1 \sim t_1 & p_2 \sim t_2} &
-%
-%             % \infer[_{\{Choice\}}]
-%             %     {p_1 / p_2 \sim t_1 / t_2}
-%             %     {p_1 \sim t_1 & p_2 \sim t_2} &
-%
-%             % \infer[_{\{Star\}}]
-%             %     {p^\star \sim [t]}
-%             %     {p \sim t} \\ \\
-%
-%             % \infer[_{\{Not\}}]
-%             %     {!\,p \sim !\,t}
-%             %     {p \sim t} &
-%
-%             % \infer[_{\{MetaVar\}}]{M ~ t}{\exists e. M:e \land t:e} &
-%
-%             % % Não tem definição de casamento pra uma referência,
-%             % % pq ela não existe durante o casamento
-%             % \\
-%         \end{array}
-%     \]
-%     \centering
-%     \caption{Matching rules}
-%     \label{fig:matching-rules}
-% \end{figure*}
-%
-% \section{Implementation details}\label{sec:implementation-details}
+We define two new operators for PEGs: flatten \((^\wedge e)\) and indentation
+\((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
+into a terminal (and can be matched as such via patterns) and the latter, acts as 
+the sequence \(e_1\:{e_2}^\star\) with the restriction that \({e_2}^\star\) must 
+be indented with respect to \(e_1\) and matches as if it was a normal sequence.
 
-% After parsing the patterns, we replace references to other patterns with the
-% pattern itself. To do this, we create a dependency graph between the patterns,
-% topologically sort and replace the references so that no resulting pattern
-% contains references to other patterns and can be treated as a single pattern.
-%
-% We also define two new operators for PEGs: flatten \((^\wedge e)\) and indentation
-% \((e_1 > e_2)\). The former flattens the parsed tree in one single node that turns
-% into a terminal (and can be matched as such via patterns) and the latter, for the
-% purpose of parsing, acts as the sequence \(e_1\:{e_2}^\star\) with the restriction
-% that \({e_2}^\star\) must be indented with respect to \(e_1\) and matches as if it
-% was a normal sequence.
-%
+While parsing a PEG (Node B), a sequence (e.g. \(e_1\:e_2\:e_2\)) of expression 
+is always nested to the right (\(e_1\:(e_2\:e_3)\)) and operators \(\&\), \(?\) 
+and \(+\) have specific behaviour: \(\&e\) generates the equivalent expression 
+\(!!e\), \(e?\) generates \(e / \epsilon\) and \(e^+\) generates \(e \: e^\star\).
+After parsing a PEG, we check if the PEG is valid (Node C), checking if it does 
+not have left recursion or a parsing expression that accepts the empty string 
+inside a star (\(^\star\)), since it may cause the PEG to loop indefinitely.
+
+Pattern validation includes replacing references to other patterns with the
+pattern itself, coercing the patterns if necessary and checking if the pattern 
+follows the input PEG's structure. If any pattern makes reference to an undefined
+pattern, the algorithm returns an error. To make the replacement between patterns, 
+we create a dependency graph between the patterns, topologically sort and replace 
+the references so that no resulting pattern contains references to other patterns 
+and can be treated as a single pattern. This is done so that it is possible to write 
+the patterns in any order, but no set of patterns may have circular dependency.
 
 \section{Conclusion}\label{sec:methodology-conclusion}
 
----
+This chapter presented the formalization for producing parse trees from an arbitrary
+PEG, the formalization for parse trees patterns and the matching semantics, and 
+a subtyping relation between parsing expression that applies both to the parse 
+trees and the patterns. Finally, current implementation details were presented,
+detailing specific behaviour for some operators and some validations done to 
+ensure the PEG and patterns can be executed safely.
 
 \cleardoublepage

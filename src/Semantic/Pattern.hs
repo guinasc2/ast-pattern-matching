@@ -7,8 +7,8 @@ Maintainer  : guiadnguto@gmail.com
 Stability   : experimental
 Portability : POSIX
 
-This module provides functions for semantic analysis of patterns ('Pattern') in PEGs ('Grammar'). 
-It includes validations, conversions, and error detection, such as invalid patterns, recursions, and duplications. 
+This module provides functions for semantic analysis of patterns ('Pattern') in PEGs ('Grammar').
+It includes validations, conversions, and error detection, such as invalid patterns, recursions, and duplications.
 It also defines specific exceptions for semantic errors related to patterns.
 -}
 module Semantic.Pattern
@@ -16,11 +16,11 @@ module Semantic.Pattern
     , Proof(..)
     , processPats
     , correctPat
-    , validPat'
+    , validPat
     ) where
 
-import Syntax.Base (toMaybe, duplicatesOfFirst, filterByFirst, Terminal, NonTerminal, Symbol, Pretty(..))
-import Syntax.Peg (Grammar, Expression(..), expression)
+import Syntax.Base (toMaybe, duplicatesOfFirst, filterByFirst, Terminal, NonTerminal, Pretty(..))
+import Syntax.Peg (Grammar, Expression(..), expression, ExpressionZipper, goLeft, goRight, goDown, goUp, pullFromRight)
 import Syntax.Pattern
     ( NamedSynPat
     , NamedPattern
@@ -29,7 +29,7 @@ import Syntax.Pattern
     , references
     , replaceSynPats)
 import Data.Foldable (Foldable(toList))
-import Data.Maybe (isNothing, fromJust, fromMaybe, listToMaybe, mapMaybe, isJust)
+import Data.Maybe (isNothing, fromJust, listToMaybe, mapMaybe, isJust)
 import Data.Either (rights, lefts)
 import qualified Algebra.Graph.AdjacencyMap as Alga
 import qualified Algebra.Graph.AdjacencyMap.Algorithm as Algo
@@ -59,7 +59,7 @@ data Proof
     | ProofStar Proof
     | ProofStarSeq [Proof]
     | ProofNot Proof
-    | ProofVar Symbol String
+    | ProofVar Expression String
     deriving (Eq, Show, Ord, Typeable, Data)
 
 {-|
@@ -280,11 +280,11 @@ Returns a proof if the pattern is valid.
 
 @since 1.0.0
 -}
-validPat' :: Grammar -> Pattern -> Maybe Proof
-validPat' g (PatNT nt p) = ProofNT nt <$> (checkPat' g p =<< expr)
+validPat :: Grammar -> Pattern -> Maybe Proof
+validPat g (PatNT nt p) = ProofNT nt <$> (checkPat g p . (, []) =<< expr)
     where
         expr = expression g nt
-validPat' g@(ds, _) p = firstJust (checkPat' g p . snd) ds
+validPat g@(ds, _) p = firstJust (checkPat g p . (, []) . snd) ds
     where
         firstJust f = listToMaybe . mapMaybe f
 
@@ -294,30 +294,53 @@ Returns a proof if the pattern is valid.
 
 @since 1.0.0
 -}
-checkPat' :: Grammar -> Pattern -> Expression -> Maybe Proof
-checkPat' _ PatEpsilon           Empty            = Just ProofEpsilon
-checkPat' _ (PatT t)             (ExprT t')       = toMaybe (t == t') (ProofT t)
-checkPat' _ (PatVar (Right t) n) (ExprT t')       = toMaybe (t == t') (ProofVar (Right t) n)
-checkPat' g p@(PatNT nt _)       (ExprNT nt')     = if nt == nt' then validPat' g p else Nothing
-checkPat' _ (PatVar (Left nt) n) (ExprNT nt')     = toMaybe (nt == nt') (ProofVar (Left nt) n)
-checkPat' g (PatSeq p1 p2)       (Sequence e1 e2) = ProofSeq <$> checkPat' g p1 e1 <*> checkPat' g p2 e2
-checkPat' g (PatSeq p1 p2)       (Indent e1 e2)   = ProofSeq <$> checkPat' g p1 e1 <*> checkPat' g p2 e2
-checkPat' g p@(PatSeq _  _)      (Star e)         = ProofStarSeq <$> checkPatStar' g p e
-checkPat' g (PatChoice p1 p2)    (Choice e1 e2)   = ProofChoice <$> checkPat' g p1 e1 <*> checkPat' g p2 e2
-checkPat' g p                    (Choice e1 e2)   = (ProofChoiceLeft <$> checkPat' g p e1)
-                                                    <|> (ProofChoiceRight <$> checkPat' g p e2)
-checkPat' g (PatStar p)          (Star e)         = ProofStar <$> checkPat' g p e
-checkPat' g (PatNot p)           (Not e)          = ProofNot <$> checkPat' g p e
-checkPat' _ (PatT t)             (Flatten _)      = Just $ ProofT t
-checkPat' g p                    (Flatten e)      = checkPat' g p e
-checkPat' _ _                    _                = Nothing
-
-checkPatStar' :: Grammar -> Pattern -> Expression -> Maybe [Proof]
-checkPatStar' g p@(PatSeq p1 p2) e = if isJust p1' then (:) <$> p1' <*> p2' else (:[]) <$> checkPat' g p e
+checkPat :: Grammar -> Pattern -> ExpressionZipper -> Maybe Proof
+checkPat g (PatVar e n) (e'@(ExprNT nt), _) =
+    if e == e'
+        then Just $ ProofVar e n
+        else (\x -> toMaybe (x == e') (ProofVar x n)) =<< expression g nt
+checkPat g (PatVar e@(ExprNT nt) n) (e', _) =
+    if e == e'
+        then Just $ ProofVar e n
+        else (\x -> toMaybe (x == e') (ProofVar x n)) =<< expression g nt
+checkPat g (PatVar e n)         z@(e', _)           =
+    if e == e'
+        then Just $ ProofVar e n
+        else checkPat g (PatVar e n) =<< e2
     where
-        p1' = checkPat' g p1 e
+        up = goUp z
+        e1 = (\(expr, z') -> (,z') <$> pullFromRight expr) =<< up
+        e2 = goLeft =<< e1
+checkPat _ PatEpsilon           (Empty, _)          = Just ProofEpsilon
+checkPat _ (PatT t)             (ExprT t', _)       = toMaybe (t == t') (ProofT t)
+checkPat g p@(PatNT nt _)       (ExprNT nt', _)     = if nt == nt' then validPat g p else Nothing
+checkPat g (PatSeq p1 p2)       z@(Sequence _ _, _) = ProofSeq
+                                                        <$> (checkPat g p1 =<< goLeft z)
+                                                        <*> (checkPat g p2 =<< goRight z)
+checkPat g (PatSeq p1 p2)       z@(Indent _ _, _)   = ProofSeq
+                                                        <$> (checkPat g p1 =<< goLeft z)
+                                                        -- Esse segundo transforma a expressão em uma estrela
+                                                        -- por causa do jeito que o Indent funciona
+                                                        <*> (checkPat g p2 . first Star =<< goRight z)
+checkPat g (PatChoice p1 p2)    z@(Choice _ _, _)   = ProofChoice
+                                                        <$> (checkPat g p1 =<< goLeft z)
+                                                        <*> (checkPat g p2 =<< goRight z)
+checkPat g p                    z@(Choice _ _, _)   = (ProofChoiceLeft <$> (checkPat g p =<< goLeft z))
+                                                        <|> (ProofChoiceRight <$> (checkPat g p =<< goRight z))
+checkPat _ PatEpsilon           (Star _, _)         = Just $ ProofStarSeq []
+checkPat g (PatStar p)          z@(Star _, _)       = ProofStar <$> (checkPat g p =<< goDown z)
+checkPat g p                    z@(Star _, _)       = ProofStarSeq <$> (checkPatStar' g p =<< goDown z)
+checkPat g (PatNot p)           z@(Not _, _)        = ProofNot <$> (checkPat g p =<< goDown z)
+checkPat _ (PatT t)             (Flatten _, _)      = Just $ ProofT t
+checkPat g p                    z@(Flatten _, _)    = checkPat g p =<< goDown z
+checkPat _ _                    _                   = Nothing
+
+checkPatStar' :: Grammar -> Pattern -> ExpressionZipper -> Maybe [Proof]
+checkPatStar' g p@(PatSeq p1 p2) e = if isJust p1' then (:) <$> p1' <*> p2' else (:[]) <$> checkPat g p e
+    where
+        p1' = checkPat g p1 e
         p2' = checkPatStar' g p2 e
-checkPatStar' g p                e = (:[]) <$> checkPat' g p e
+checkPatStar' g p                e = (:[]) <$> checkPat g p e
 
 {-|
 Corrects a pattern ('Pattern') based on a proof of matching ('Proof').
@@ -330,10 +353,11 @@ correctPat (PatT t)             (ProofT t')              = toMaybe (t == t') (Pa
 correctPat (PatNT nt pat)       (ProofNT nt' proof)      = if nt == nt'
                                                             then PatNT nt <$> correctPat pat proof
                                                             else Nothing
-correctPat (PatVar (Left nt) n) (ProofVar (Left nt') n') = toMaybe (nt == nt' && n == n') (PatVar (Left nt) n)
-correctPat (PatVar (Right t) n) (ProofVar (Right t') n') = toMaybe (t == t' && n == n') (PatVar (Right t) n)
+-- correctPat (PatVar pat n)       (ProofVar proof n')      = toMaybe (n == n' && pat == proof) (PatVar pat n)
+correctPat (PatVar _ n)       (ProofVar proof n')        = toMaybe (n == n') (PatVar proof n)
 correctPat (PatSeq p1 p2)       (ProofSeq p1' p2')       = PatSeq <$> correctPat p1 p1' <*> correctPat p2 p2'
-correctPat p@(PatSeq _ _)       (ProofStarSeq xs)        = PatStarSeq <$> correctPatStar p xs
+correctPat PatEpsilon           (ProofStarSeq _)         = Just $ PatStarSeq []
+correctPat p                    (ProofStarSeq xs)        = PatStarSeq <$> correctPatStar p xs
 correctPat (PatChoice p1 p2)    (ProofChoice p1' p2')    = PatChoice <$> correctPat p1 p1' <*> correctPat p2 p2'
 correctPat pat                  (ProofChoiceLeft proof)  = flip PatChoice (PatNot PatEpsilon) <$> correctPat pat proof
 correctPat pat                  (ProofChoiceRight proof) = PatChoice (PatNot PatEpsilon) <$> correctPat pat proof
@@ -348,48 +372,6 @@ correctPatStar (PatSeq p1 p2) (x:xs) = (:) <$> correctPat p1 x <*> correctPatSta
 correctPatStar _ (_:_) = Nothing
 
 {-|
-Validates a pattern ('Pattern') against a PEG ('Grammar').
-
-Returns `True` if the pattern is valid, or `False` otherwise.
-
-@since 1.0.0
--}
-validPat :: Grammar -> Pattern -> Bool
-validPat g (PatNT nt p) = fromMaybe False rule
-    where
-        expr = expression g nt
-        rule = checkPat g p <$> expr
-validPat g@(ds, _) p = any (checkPat g p . snd) ds
-
-{-|
-Checks if a pattern ('Pattern') matches an expression ('Expression').
-
-Returns `True` if there is a match, or `False` otherwise.
-
-@since 1.0.0
--}
-checkPat :: Grammar -> Pattern -> Expression -> Bool
-checkPat _ PatEpsilon           Empty            = True
-checkPat _ (PatT t)             (ExprT t')       = t == t'
-checkPat _ (PatVar (Right t) _) (ExprT t')       = t == t'
-checkPat g p@(PatNT nt _)       (ExprNT nt')     = nt == nt' && validPat g p
-checkPat _ (PatVar (Left nt) _) (ExprNT nt')     = nt == nt'
-checkPat g (PatSeq p1 p2)       (Sequence e1 e2) = checkPat g p1 e1 && checkPat g p2 e2
-checkPat g (PatSeq p1 p2)       (Indent e1 e2)   = checkPat g p1 e1 && checkPat g p2 e2
-checkPat g p@(PatSeq _ _)       (Star e)         = checkPatStar g p e
-checkPat g (PatChoice p1 p2)    (Choice e1 e2)   = checkPat g p1 e1 && checkPat g p2 e2
-checkPat g p                    (Choice e1 e2)   = checkPat g p e1 || checkPat g p e2
-checkPat g (PatStar p)          (Star e)         = checkPat g p e
-checkPat g (PatNot p)           (Not e)          = checkPat g p e
-checkPat _ (PatT _)             (Flatten _)      = True
-checkPat g p                    (Flatten e)      = checkPat g p e
-checkPat _ _                    _                = False
-
-checkPatStar :: Grammar -> Pattern -> Expression -> Bool
-checkPatStar g p@(PatSeq p1 p2) e = if checkPat g p1 e then checkPatStar g p2 e else checkPat g p e
-checkPatStar g p                e = checkPat g p e
-
-{-|
 Processes a list of syntactic patterns ('NamedSynPat') and validates the patterns.
 
 Returns a list of valid patterns or an exception indicating the errors found.
@@ -399,7 +381,7 @@ Returns a list of valid patterns or an exception indicating the errors found.
 processSynPats :: Grammar -> [NamedSynPat] -> Either PatternException [NamedPattern]
 processSynPats g ps =
     case lefts pats of
-        [] -> case filter (not . validPat g . snd) valids of
+        [] -> case filter (isNothing . validPat g . snd) valids of
                 [] -> Right valids
                 invalids -> Left $ PatInvalid (map InvalidPattern invalids)
         e -> Left $ PatInvalid e

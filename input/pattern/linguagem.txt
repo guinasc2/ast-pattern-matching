@@ -1,2 +1,0 @@
-pattern function_call : primary := #v1:identifier @space "(" @space #v2:arguments ")"
-pattern space : space := " "*

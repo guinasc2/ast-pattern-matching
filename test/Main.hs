@@ -73,5 +73,4 @@ testsMatch = testGroup "Tests Match"
                 (PatSeq    (PatT    (T "1")) (PatSeq    (PatSeq    (PatT    (T "+")) (PatNT    (NT "F") (PatSeq    (PatT    (T "2")) (PatSeq    (PatT    (T "*")) (PatT    (T "3")))))) (PatSeq    (PatT    (T "+")) (PatT    (T "4")))))
                 (ParsedSeq (ParsedT (T "1")) (ParsedSeq (ParsedSeq (ParsedT (T "+")) (ParsedNT (NT "F") (ParsedSeq (ParsedT (T "2")) (ParsedSeq (ParsedT (T "*")) (ParsedT (T "3")))))) (ParsedSeq (ParsedT (T "+")) (ParsedT (T "4")))))
             @? ""
-                
     ]

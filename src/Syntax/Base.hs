@@ -13,14 +13,14 @@ Portability : POSIX
 This module defines the basic types to represent terminal and non-terminal symbols
 in a grammar, as well as utilities for list manipulation and a class for formatted printing.
 -}
-module Syntax.Base 
+module Syntax.Base
     ( NonTerminal(..)
     , Terminal(..)
     , Symbol
     , Pretty(..)
     , toMaybe
     , duplicatesOfFirst
-    , filterByFirst  
+    , filterByFirst
     ) where
 
 import Text.PrettyPrint.HughesPJ (text, Doc, hcat)

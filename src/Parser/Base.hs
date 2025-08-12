@@ -11,7 +11,7 @@ This module provides basic definitions for grammar parsing, including parsers
 for non-terminals, terminals, and symbols, as well as utilities for handling
 whitespace, comments, and delimiters.
 -}
-module Parser.Base 
+module Parser.Base
     ( Parser
     , ParseError
     , nonTerminal

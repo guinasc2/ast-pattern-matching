@@ -11,15 +11,16 @@ This module provides parsers for syntactic patterns ('SyntaxPattern') and named 
 ('NamedSynPat') in grammars. It also includes a function to execute the parser on an
 input string.
 -}
-module Parser.Pattern 
+module Parser.Pattern
     ( patterns
     , parsePatterns
     ) where
 
 import Syntax.Pattern (SyntaxPattern(..), NamedSynPat)
 import Parser.Base
-    (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, pSymbol, parseWith, ParseError)
-import Text.Megaparsec (eof, (<?>), choice, some, sepBy1)
+    (Parser, sc, hsc, symbol, parens, identifier, nonTerminal, terminal, parseWith, ParseError)
+import qualified Parser.Peg as Peg
+import Text.Megaparsec (eof, (<?>), choice, some, sepBy1, MonadParsec (try))
 import Text.Megaparsec.Char (char)
 import Control.Monad.Combinators.Expr (Operator(Postfix, Prefix), makeExprParser)
 
@@ -63,18 +64,18 @@ A primary expression can be:
 - An expression enclosed in parentheses.
 - A non-terminal associated with a pattern.
 - A terminal.
-- A meta variable.
+- A pattern variable.
 - A reference to a named pattern.
 - The empty symbol ('ε').
 
 @since 1.0.0
 -}
 primary :: Parser SyntaxPattern
-primary = choice 
-            [ parens expression
-            , parens patNT
+primary = choice
+            [ try $ parens patNT
+            , parens expression
             , patT
-            , metaVariable
+            , patVar
             , reference
             , epsilon
             ]
@@ -121,16 +122,16 @@ patT :: Parser SyntaxPattern
 patT = SynT <$> terminal
 
 {-|
-Parser for a meta variable.
+Parser for a pattern variable.
 
-A meta variable is defined in the format:
+A pattern variable is defined in the format:
 
-> #<name>:<symbol>
+> #<name>:<expression>
 
 @since 1.0.0
 -}
-metaVariable :: Parser SyntaxPattern
-metaVariable = f <$> char '#' <*> identifier <*> char ':' <*> pSymbol <?> "meta variable"
+patVar :: Parser SyntaxPattern
+patVar = f <$> char '#' <*> identifier <*> char ':' <*> Peg.primary <?> "pattern variable"
     where
         f _ n _ s = SynVar s n
 
@@ -182,7 +183,7 @@ patOperatorTable =
         [
             patSuffix "*" SynStar,
             patSuffix "+" plus,
-            patSuffix "?" question
+            patSuffix "?" opt
         ],
         [
             patPrefix "!" SynNot,
@@ -191,7 +192,7 @@ patOperatorTable =
     ]
     where
         plus e = SynSeq e (SynStar e)
-        question e = SynChoice e SynEpsilon
+        opt e = SynChoice e SynEpsilon
 
 {-|
 Defines a suffix operator for patterns.

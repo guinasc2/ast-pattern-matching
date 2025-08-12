@@ -12,7 +12,7 @@ including rule validation, left recursion detection, nullable expressions,
 and duplicate definitions. It also defines specific exceptions for semantic
 errors in PEGs.
 -}
-module Semantic.Peg 
+module Semantic.Peg
     ( PegException(..)
     , processPeg
     ) where
@@ -101,7 +101,7 @@ Prints the exception indicating the rule that references non-terminals out of sc
 -}
 instance Pretty RefOutOfScopeException where
     pPrint :: RefOutOfScopeException -> Doc
-    pPrint (RefOutOfScope def nts) = text "The rule" <+> pPrint def 
+    pPrint (RefOutOfScope def nts) = text "The rule" <+> pPrint def
                                      <+> text "depends on undefined rules"
                                      <+> parens (pPrint nts)
 
@@ -160,7 +160,7 @@ nullable _ (_, Empty)           = True
 nullable _ (_, Star _)          = True
 nullable _ (_, Not _)           = True
 nullable _ (_, ExprT _)         = False
-nullable g (nt, ExprNT nt')     = nt == nt' 
+nullable g (nt, ExprNT nt')     = nt == nt'
                                   || nullable g (nt', fromMaybe (error $ "Error " ++ show nt') (expression g nt'))
 nullable g (nt, Sequence e1 e2) = nullable g (nt, e1) && nullable g (nt, e2)
 nullable g (nt, Choice e1 e2)   = nullable g (nt, e1) || nullable g (nt, e2)
@@ -314,7 +314,7 @@ Left (LeftRecursive [(NT "S",Sequence (ExprNT (NT "S")) (ExprT (T "a")))])
 @since 1.0.0
 -}
 processPeg :: Grammar -> Either PegException Grammar
-processPeg g = 
+processPeg g =
     case mkGraph g' of
         Left x -> Left x
         Right graph ->

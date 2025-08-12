@@ -11,15 +11,23 @@ This module defines the structure of a parsed tree ('ParsedTree') and
 associated functions, such as the 'flatten' function to extract the terminals from a tree.
 It also provides an instance of the 'Pretty' class for formatted printing.
 -}
-module Syntax.ParsedTree 
+module Syntax.ParsedTree
     ( ParsedTree(..)
+    , ParsedTreeZipper
     , flatten
+    , goUp
+    , goDown
+    , goLeft
+    , goRight
+    , pullFromRight
+    , ofExpression
     ) where
 
 import Syntax.Base (Terminal(..), NonTerminal, Pretty(..))
 import Text.PrettyPrint.HughesPJ (text, Doc, (<+>), (<>), empty, lbrack, rbrack, hcat)
 import Prelude hiding ((<>))
 import Data.Generics (Data, Typeable, mkQ, everything)
+import Syntax.Peg (Expression(..), Grammar, expression)
 
 {-|
 Represents an abstract syntax tree (AST).
@@ -45,8 +53,75 @@ data ParsedTree
     | ParsedChoiceRight ParsedTree
     | ParsedStar [ParsedTree]
     | ParsedNot
-    | ParsedIndent ParsedTree ParsedTree
+    | ParsedIndent ParsedTree [ParsedTree]
     deriving (Show, Typeable, Data)
+
+data ParsedTreeCrumbs
+    = ParsedNTCrumb NonTerminal
+    | ParsedSeqFirst ParsedTree
+    | ParsedSeqSecond ParsedTree
+    | ParsedChoiceLeftCrumb
+    | ParsedChoiceRightCrumb
+    | ParsedStarCrumb [ParsedTree] [ParsedTree] -- primeiro é o que falta, segundo é o que já foi
+    | ParsedIndentFirst [ParsedTree]
+    | ParsedIndentSecond ParsedTree
+
+type ParsedTreePath = [ParsedTreeCrumbs]
+
+type ParsedTreeZipper = (ParsedTree, ParsedTreePath)
+
+goUp :: ParsedTreeZipper -> Maybe ParsedTreeZipper
+goUp (t, ParsedNTCrumb nt:z)                 = Just (ParsedNT nt t, z)
+goUp (t1, ParsedSeqFirst t2:z)               = Just (ParsedSeq t1 t2, z)
+goUp (t2, ParsedSeqSecond t1:z)              = Just (ParsedSeq t1 t2, z)
+goUp (t, ParsedChoiceLeftCrumb:z)            = Just (ParsedChoiceLeft t, z)
+goUp (t, ParsedChoiceRightCrumb:z)           = Just (ParsedChoiceRight t, z)
+goUp (t, (ParsedStarCrumb ts []):z)          = Just (ParsedStar (t:ts), z)
+goUp z@(_, (ParsedStarCrumb _ _):_)          = goUp =<< goLeft z
+goUp (t, ParsedIndentFirst ts:z)             = Just (ParsedIndent t ts, z)
+goUp (ParsedStar ts, ParsedIndentSecond t:z) = Just (ParsedIndent t ts, z)
+goUp (_, ParsedIndentSecond _:_)             = Nothing
+goUp (_, [])                                 = Nothing
+
+-- TODO:
+-- goLeft, goRight e goDown não dão muito bem quando tentam acessar esquerda e direita
+-- de uma árvore que está dentro de uma lista, pois a preferência é por andar na lista.
+goDown :: ParsedTreeZipper -> Maybe ParsedTreeZipper
+goDown (ParsedNT nt t, z)       = Just (t, ParsedNTCrumb nt:z)
+goDown (ParsedChoiceLeft t, z)  = Just (t, ParsedChoiceLeftCrumb:z)
+goDown (ParsedChoiceRight t, z) = Just (t, ParsedChoiceRightCrumb:z)
+goDown (ParsedStar [], _)       = Nothing
+goDown (ParsedStar (t:ts), z)   = Just (t, ParsedStarCrumb ts []:z)
+goDown _                        = Nothing
+
+goLeft :: ParsedTreeZipper -> Maybe ParsedTreeZipper
+goLeft (_, (ParsedStarCrumb _ []):_)             = Nothing
+goLeft (t, (ParsedStarCrumb ts (t':ts2)):z)      = Just (t', ParsedStarCrumb (t:ts) ts2:z)
+goLeft (ParsedSeq t1 t2, z)                      = Just (t1, ParsedSeqFirst t2:z)
+goLeft (ParsedIndent t ts, z)                    = Just (t, ParsedIndentFirst ts:z)
+goLeft _                                         = Nothing
+
+goRight :: ParsedTreeZipper -> Maybe ParsedTreeZipper
+goRight (_, (ParsedStarCrumb [] _):_)             = Nothing
+goRight (t, (ParsedStarCrumb (t':ts1) ts):z)      = Just (t', ParsedStarCrumb ts1 (t:ts):z)
+goRight (ParsedSeq t1 t2, z)                      = Just (t2, ParsedSeqSecond t1:z)
+goRight (ParsedIndent t ts, z)                    = Just (ParsedStar ts, ParsedIndentSecond t:z)
+goRight _                                         = Nothing
+
+pullFromRight :: ParsedTree -> Maybe ParsedTree
+pullFromRight (ParsedSeq e1 e2) = maybe (Just e1') (Just . ParsedSeq e1') eT
+    where
+        (eH, eT) = getHead e2
+        e1' = addAtEnd e1 eH
+pullFromRight _ = Nothing
+
+addAtEnd :: ParsedTree -> ParsedTree -> ParsedTree
+addAtEnd (ParsedSeq e1 e2) e3 = ParsedSeq e1 $ addAtEnd e2 e3
+addAtEnd e e3 = ParsedSeq e e3
+
+getHead :: ParsedTree -> (ParsedTree, Maybe ParsedTree)
+getHead (ParsedSeq e1 e2) = (e1, Just e2)
+getHead e                = (e, Nothing)
 
 {-|
 Instance of the 'Pretty' class for 'ParsedTree'.
@@ -105,7 +180,7 @@ pPrint' _ ParsedNot = Text.PrettyPrint.HughesPJ.empty
 pPrint' indent (ParsedIndent e b) =
     text "Indent" <> text "\n"
     <> nest indent <> pPrint' (continue indent) e <> text "\n"
-    <> nest1 indent <> pPrint' (continue1 indent) b
+    <> nest1 indent <> pPrint' (continue1 indent) (ParsedStar b)
 
 {-|
 Extracts all terminal symbols from a 'ParsedTree' as a single string.
@@ -125,3 +200,18 @@ flatten = everything (++) ("" `mkQ` term)
     where
         term (ParsedT (T t)) = t
         term _ = ""
+
+ofExpression :: Grammar -> Expression -> ParsedTree -> Bool
+ofExpression _ Empty ParsedEpsilon = True
+ofExpression _ (ExprT t) (ParsedT t') = t == t'
+ofExpression g (ExprNT nt) (ParsedNT nt' t) = nt == nt' && case expression g nt of
+                                                Just x -> ofExpression g x t
+                                                Nothing -> False
+ofExpression g (Sequence e1 e2) (ParsedSeq t1 t2) = ofExpression g e1 t1 && ofExpression g e2 t2
+ofExpression g (Choice e1 _) (ParsedChoiceLeft t) = ofExpression g e1 t
+ofExpression g (Choice _ e2) (ParsedChoiceRight t)  = ofExpression g e2 t
+ofExpression g (Star e) (ParsedStar ts) = all (ofExpression g e) ts
+ofExpression _ (Not _) ParsedNot = True
+ofExpression _ (Flatten _) (ParsedT _) = True 
+ofExpression g (Indent e1 e2) (ParsedIndent t ts) = ofExpression g e1 t && all (ofExpression g e2) ts
+ofExpression _ _ _ = False

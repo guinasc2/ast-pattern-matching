@@ -11,15 +11,21 @@ This module defines structures and functions to work with PEGs (Parsing Expressi
 including expressions, definitions, and complete grammars. It also provides instances of the 'Pretty'
 class for formatted printing.
 -}
-module Syntax.Peg 
+module Syntax.Peg
     ( Expression(..)
     , Definition
     , Grammar
+    , ExpressionZipper
     , nonTerminals
     , terminals
     , terminals'
     , expression
     , produces
+    , goLeft
+    , goRight
+    , goUp
+    , goDown
+    , pullFromRight
     ) where
 
 import Syntax.Base (NonTerminal, Terminal, Pretty(..))
@@ -57,6 +63,66 @@ data Expression
     | Flatten Expression
     | Indent Expression Expression
     deriving (Show, Eq, Ord, Typeable, Data)
+
+data ExpressionCrumb
+    = SequenceFirst Expression
+    | SequenceSecond Expression
+    | ChoiceFirst Expression
+    | ChoiceSecond Expression
+    | IndentFirst Expression
+    | IndentSecond Expression
+    | StarCrumb
+    | NotCrumb
+    | FlattenCrumb
+
+type ExpressionPath = [ExpressionCrumb]
+
+type ExpressionZipper = (Expression, ExpressionPath)
+
+goUp :: ExpressionZipper -> Maybe ExpressionZipper
+goUp (e1, SequenceFirst e2:z)  = Just (Sequence e1 e2, z)
+goUp (e2, SequenceSecond e1:z) = Just (Sequence e1 e2, z)
+goUp (e1, IndentFirst e2:z)    = Just (Indent e1 e2, z)
+goUp (e2, IndentSecond e1:z)   = Just (Indent e1 e2, z)
+goUp (e1, ChoiceFirst e2:z)    = Just (Choice e1 e2, z)
+goUp (e2, ChoiceSecond e1:z)   = Just (Choice e1 e2, z)
+goUp (e1, StarCrumb:z)         = Just (Star e1, z)
+goUp (e1, NotCrumb:z)          = Just (Not e1, z)
+goUp (e1, FlattenCrumb:z)      = Just (Flatten e1, z)
+goUp (_, [])                   = Nothing
+
+goRight :: ExpressionZipper -> Maybe ExpressionZipper
+goRight (Sequence e1 e2, z) = Just (e2, SequenceSecond e1:z)
+goRight (Choice e1 e2, z)   = Just (e2, ChoiceSecond e1:z)
+goRight (Indent e1 e2, z)   = Just (e2, IndentSecond e1:z)
+goRight _                   = Nothing
+
+goLeft :: ExpressionZipper -> Maybe ExpressionZipper
+goLeft (Sequence e1 e2, z) = Just (e1, SequenceFirst e2:z)
+goLeft (Choice e1 e2, z)   = Just (e1, ChoiceFirst e2:z)
+goLeft (Indent e1 e2, z)   = Just (e1, IndentFirst e2:z)
+goLeft _                   = Nothing
+
+goDown :: ExpressionZipper -> Maybe ExpressionZipper
+goDown (Star e, z)    = Just (e, StarCrumb:z)
+goDown (Not e, z)     = Just (e, NotCrumb:z)
+goDown (Flatten e, z) = Just (e, FlattenCrumb:z)
+goDown _              = Nothing
+
+pullFromRight :: Expression -> Maybe Expression
+pullFromRight (Sequence e1 e2) = maybe (Just e1') (Just . Sequence e1') eT
+    where
+        (eH, eT) = getHead e2
+        e1' = addAtEnd e1 eH
+pullFromRight _ = Nothing
+
+addAtEnd :: Expression -> Expression -> Expression
+addAtEnd (Sequence e1 e2) e3 = Sequence e1 $ addAtEnd e2 e3
+addAtEnd e e3 = Sequence e e3
+
+getHead :: Expression -> (Expression, Maybe Expression)
+getHead (Sequence e1 e2) = (e1, Just e2)
+getHead e                = (e, Nothing)
 
 {-|
 Represents a definition in a PEG.

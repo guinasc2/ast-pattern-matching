@@ -11,9 +11,11 @@ This module provides parsers for PEGs (Parsing Expression Grammars),
 including definitions, expressions, and PEG operators. It also provides a function
 to execute the parser on an input string.
 -}
-module Parser.Peg 
+module Parser.Peg
     ( grammar
     , parseGrammar
+    , expression
+    , primary
     ) where
 
 import Syntax.Base (NonTerminal(NT), Terminal(..))
@@ -91,7 +93,7 @@ A primary expression can be:
 @since 1.0.0
 -}
 primary :: Parser Expression
-primary = choice 
+primary = choice
             [ epsilon
             , ExprNT <$> nonTerminal
             , parens expression
@@ -170,7 +172,7 @@ pegOperatorTable :: [[Operator Parser Expression]]
 pegOperatorTable =
     [ [ pegSuffix "*" Star
         , pegSuffix "+" plus
-        , pegSuffix "?" question
+        , pegSuffix "?" opt
         ]
     , [ pegPrefix "!" Not
         , pegPrefix "&" (Not . Not)
@@ -179,7 +181,7 @@ pegOperatorTable =
     ]
     where
         plus e = Sequence e (Star e)
-        question e = Choice e Empty
+        opt e = Choice e Empty
 
 {-|
 Defines a suffix operator for PEG expressions.

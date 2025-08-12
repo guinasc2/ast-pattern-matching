@@ -78,4 +78,4 @@ mkParser' g (Indent e b) = Lexer.indentBlock sc p
     where
         p = do
             expr <- mkParser' g e
-            return $ Lexer.IndentSome Nothing (return . ParsedIndent expr . foldr1 ParsedSeq) (mkParser' g b)
+            return $ Lexer.IndentSome Nothing (return . ParsedIndent expr) (mkParser' g b)

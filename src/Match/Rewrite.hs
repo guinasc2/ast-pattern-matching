@@ -11,7 +11,7 @@ This module provides functions to rewrite ASTs ('ParsedTree')
 based on patterns ('Pattern'). It uses pattern matching to replace
 subtrees with new structures.
 -}
-module Match.Rewrite 
+module Match.Rewrite
     ( replace
     , rewrite
     ) where
@@ -20,6 +20,7 @@ import Syntax.Pattern (Pattern(..))
 import Syntax.ParsedTree (ParsedTree(..))
 import Match.Capture (capture)
 import Data.Generics (mkT, everywhere)
+import Syntax.Peg (Grammar)
 
 {-|
 Substitui uma subárvore em uma AST ('ParsedTree') com base em uma variável ('PatVar').
@@ -35,7 +36,8 @@ replace (PatNT nt p)     (ParsedNT nt' t) subst = if nt == nt'
                                                     then ParsedNT nt' (replace p t subst)
                                                     else ParsedNT nt' t
 replace (PatSeq p1 p2)   (ParsedSeq t1 t2)     subst = ParsedSeq (replace p1 t1 subst) (replace p2 t2 subst)
-replace (PatSeq p1 p2)   (ParsedIndent t1 t2)  subst = ParsedIndent (replace p1 t1 subst) (replace p2 t2 subst)
+-- replace (PatSeq p1 p2)   (ParsedIndent t1 t2)  subst = ParsedIndent (replace p1 t1 subst) (replace p2 t2 subst)
+replace (PatSeq p1 p2)   (ParsedIndent t1 t2)  subst = ParsedIndent (replace p1 t1 subst) $ map (\ x -> replace p2 x subst) t2
 replace (PatChoice p1 _) (ParsedChoiceLeft t)  subst = ParsedChoiceLeft $ replace p1 t subst
 replace (PatChoice _ p2) (ParsedChoiceRight t) subst = ParsedChoiceRight $ replace p2 t subst
 replace (PatStar p)      (ParsedStar ts)       subst = ParsedStar $ map (\ x -> replace p x subst) ts
@@ -47,5 +49,5 @@ a variable ('PatVar') with another pattern.
 
 @since 1.0.0
 -}
-rewrite :: Pattern -> Pattern -> ParsedTree -> ParsedTree
-rewrite p p' = everywhere $ mkT (\x -> foldr ((flip . replace) p') x (concat (capture p x)))
+rewrite :: Grammar -> Pattern -> Pattern -> ParsedTree -> ParsedTree
+rewrite g p p' = everywhere $ mkT (\x -> foldr ((flip . replace) p') x (concat (capture g p x)))

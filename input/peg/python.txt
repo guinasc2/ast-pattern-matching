@@ -13,7 +13,7 @@ else_block   <- ("else" space ":") > statement
 while_stmt   <- ("while" space expression ":") > statement
 for_stmt     <- ("for" space identifier space "in" space expression ":") > statement
 
-simple <- "break" / "continue" / import_stmt / assignment / return_stmt / expression
+simple <- import_stmt / assignment / return_stmt / expression
 return_stmt <- "return" space expr_list
 import_stmt <- simple_import / from_import
 simple_import <- "import" space identifier
@@ -24,7 +24,7 @@ attr       <- "=" / "+=" / "-=" / "*=" / "/="
 
 expression <- or_expr ("or" space or_expr)*
 or_expr    <- and_expr ("and" space and_expr)*
-and_expr   <- "not" space and_expr / comparison
+and_expr   <- "not" space comparison / comparison
 comparison <- sum (op_comp sum)*
 sum        <- term (op_term term)* 
 term       <- factor (op_factor factor)*
@@ -39,6 +39,7 @@ op_power  <- "**" space
 
 primary <- function_call / array_access / "[" items? "]" / atom
 function_call <- identifier space "(" space expr_list? ")" ("." primary)?
+-- function_call <- identifier "(" expr_list? ")"
 array_access <- identifier space "[" space expression "]" ("." primary)?
 
 atom      <- "True" / "False" / "None" / number / strings / identifier
@@ -53,7 +54,7 @@ sep <- "," space
 fstring <- "f" string
 string  <- ['] (!['] char)* ['] / ["] (!["] char)* ["]
 -- TODO: Fazer uma forma mais fácil
-char    <- [a-zA-Z0-9 :{}.,;^+-*/%()_!?áéúçã%] / "[" / "]"
+char    <- [a-zA-Z0-9 :{}.,;^+-*/%()_!?áéúçã] / "[" / "]"
 
 ^identifier <- single_id ("." single_id)*
 single_id   <- [a-zA-Z] [a-zA-Z0-9_]*

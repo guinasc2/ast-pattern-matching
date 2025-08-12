@@ -11,7 +11,7 @@ This module defines structures to represent patterns over grammars,
 as well as utility functions for manipulating and replacing named patterns.
 It also provides instances of the 'Pretty' class for formatted printing.
 -}
-module Syntax.Pattern 
+module Syntax.Pattern
     ( Pattern(..)
     , SyntaxPattern(..)
     , NamedPattern
@@ -20,11 +20,12 @@ module Syntax.Pattern
     , replaceSynPats
     ) where
 
-import Syntax.Base (NonTerminal(..), Terminal(..), Symbol, Pretty(..))
+import Syntax.Base (NonTerminal(..), Terminal(..), Pretty(..))
 import Text.PrettyPrint.HughesPJ ((<+>), text, parens, Doc, brackets)
 import Data.List (nub)
 import Data.Bifunctor (Bifunctor(second))
 import Data.Generics (everything, mkQ, Typeable, Data, everywhere, mkT)
+import Syntax.Peg (Expression)
 
 {-|
 Represents a pattern in a grammar.
@@ -50,7 +51,7 @@ data Pattern
     | PatStar Pattern
     | PatStarSeq [Pattern]
     | PatNot Pattern
-    | PatVar Symbol String
+    | PatVar Expression String
     deriving (Eq, Show, Ord, Typeable, Data)
 
 {-|
@@ -77,7 +78,7 @@ data SyntaxPattern
     | SynChoice SyntaxPattern SyntaxPattern
     | SynStar SyntaxPattern
     | SynNot SyntaxPattern
-    | SynVar Symbol String
+    | SynVar Expression String
     | SynRef String
     deriving (Eq, Show, Ord, Typeable, Data)
 
@@ -105,15 +106,15 @@ Prints the pattern in a readable format, with operators like `/` for choice,
 -}
 instance Pretty Pattern where
     pPrint :: Pattern -> Doc
-    pPrint (PatNT nt p)      = pPrint nt <+> text ":=" <+> (parens . pPrint) p
+    pPrint (PatNT nt p)      = pPrint nt <+> text ":=" <+> parens (pPrint p)
     pPrint (PatT t)          = pPrint t
-    pPrint (PatVar s name)   = text ("#" ++ name) <> text ":" <> pPrint s
+    pPrint (PatVar s name)   = text ("#" ++ name) <> text ":" <> parens (pPrint s)
     pPrint PatEpsilon        = text "ε"
     pPrint (PatSeq p1 p2)    = pPrint p1 <+> pPrint p2
-    pPrint (PatChoice p1 p2) = pPrint p1 <+> text "/" <+> pPrint p2
-    pPrint (PatStar p)       = (parens . pPrint) p <> text "*"
+    pPrint (PatChoice p1 p2) = parens $ pPrint p1 <+> text "/" <+> pPrint p2
+    pPrint (PatStar p)       = parens (pPrint p) <> text "*"
     pPrint (PatStarSeq ps)   = (brackets . pPrint) ps
-    pPrint (PatNot p)        = text "!" <> (parens . pPrint) p
+    pPrint (PatNot p)        = text "!" <> parens (pPrint p)
 
 {-|
 Instance of the 'Pretty' class for 'SyntaxPattern'.
@@ -125,14 +126,14 @@ Prints the syntactic pattern in a readable format, with operators like `/` for c
 -}
 instance Pretty SyntaxPattern where
     pPrint :: SyntaxPattern -> Doc
-    pPrint (SynNT nt ps)     = pPrint nt <+> text ":=" <+> (parens . pPrint) ps
+    pPrint (SynNT nt ps)     = pPrint nt <+> text ":=" <+> parens (pPrint ps)
     pPrint (SynT t)          = pPrint t
-    pPrint (SynVar s name)   = text ("#" ++ name) <> text ":" <> pPrint s
+    pPrint (SynVar s name)   = text ("#" ++ name) <> text ":" <> parens (pPrint s)
     pPrint SynEpsilon        = text "ε"
     pPrint (SynSeq p1 p2)    = pPrint p1 <+> pPrint p2
-    pPrint (SynChoice p1 p2) = pPrint p1 <+> text "/" <+> pPrint p2
-    pPrint (SynStar p)       = (parens . pPrint) p <> text "*"
-    pPrint (SynNot p)        = text "!" <> (parens . pPrint) p
+    pPrint (SynChoice p1 p2) = parens $ pPrint p1 <+> text "/" <+> pPrint p2
+    pPrint (SynStar p)       = parens (pPrint p) <> text "*"
+    pPrint (SynNot p)        = text "!" <> parens (pPrint p)
     pPrint (SynRef name)     = text $ "@" ++ name
 
 {-|

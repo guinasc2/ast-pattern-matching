@@ -16,7 +16,6 @@ AST ('ParsedTree') and capture corresponding subtrees.
 module Match.Capture
     ( match
     , match'
-    , collect
     , capture
     ) where
 
@@ -41,10 +40,10 @@ False
 @since 1.0.0
 -}
 match' :: Grammar -> Pattern -> ParsedTreeZipper -> Maybe [(Pattern, ParsedTree)]
-match' g p@(PatVar e n)         z@(t, _) =
+match' g p@(PatVar e _)         z@(t, _) =
     if ofExpression g e t
         then Just [(p, t)]
-        else match' g (PatVar e n) =<< e2
+        else match' g p =<< e2
     where
         up = goUp z
         e1 = (\(expr, z') -> (,z') <$> pullFromRight expr) =<< up
@@ -92,30 +91,6 @@ True
 -}
 match :: Grammar -> Pattern -> ParsedTree -> Bool
 match g p = everything (||) (False `mkQ` (isJust . match' g p . (, [])))
-
-{-|
-Collects the variables of a pattern and the subtrees they matched.
-
-The 'collect' function is used internally to capture pairs of patterns and corresponding subtrees.
-
-@since 1.0.0
--}
-collect :: Pattern -> ParsedTree -> [(Pattern, ParsedTree)]
-collect PatEpsilon             ParsedEpsilon         = []
-collect (PatNot _)             ParsedNot             = []
-collect (PatNT _ p)            (ParsedNT _ t)        = collect p t
-collect (PatT _)               (ParsedT _)           = []
--- collect p@(PatVar (Left nt) _) tree@(ParsedNT nt' _) = if nt == nt' then [(p, tree)] else []
--- collect p@(PatVar (Right t) _) tree@(ParsedT t')     = if t == t' then [(p, tree)] else []
-collect (PatSeq p1 p2)         (ParsedSeq t1 t2)     = collect p1 t1 ++ collect p2 t2
-collect (PatSeq p1 p2)         (ParsedIndent t1 t2)  = collect p1 t1 ++ collect p2 (ParsedStar t2)
-collect (PatChoice p1 _)       (ParsedChoiceLeft t)  = collect p1 t
-collect (PatChoice _ p2)       (ParsedChoiceRight t) = collect p2 t
-collect (PatStar p)            (ParsedStar ts)       = concatMap (collect p) ts
-collect (PatStarSeq ps)        (ParsedStar ts)       = if length ps == length ts
-                                                        then concat $ zipWith collect ps ts
-                                                        else []
-collect _                      _                     = []
 
 {-|
 Captures all subtrees of an AST ('ParsedTree') that match a variable ('PatVar').

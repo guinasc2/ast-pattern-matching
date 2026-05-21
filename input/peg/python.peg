@@ -10,7 +10,7 @@ if_stmt      <- (("if" space expression ":") > statement) (elif_block / else_blo
 elif_block   <- (("elif" space expression ":") > statement) (elif_block / else_block)?
 else_block   <- ("else" space ":") > statement
 
-while_stmt   <- ("while" space expression ":") > statement
+while_stmt   <- ("while" space expression space ":") > statement
 for_stmt     <- ("for" space identifier space "in" space expression ":") > statement
 
 simple <- import_stmt / assignment / return_stmt / expression

@@ -48,7 +48,7 @@ An expression can be:
 - 'Star': A repetition of zero or more times of an expression.
 - 'Not': A negation of an expression.
 - 'Flatten': An expression that must be "flattened".
-- 'Indent': An expression that must be "indented" with respect to the first.
+- 'Indent': An expression that must be "indented" with respect to the first. Because of the way MegaParsec parses indented blocks, the second expressions turns into a e+.
 
 @since 1.0.0
 -}

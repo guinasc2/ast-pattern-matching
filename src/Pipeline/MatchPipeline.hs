@@ -30,6 +30,8 @@ import Data.Bifunctor (Bifunctor(first, bimap, second))
 import Data.Foldable (find)
 import Data.Maybe (mapMaybe)
 import Data.List (nub)
+import qualified Quote.Peg as QPeg
+import qualified Quote.Pattern as QPattern
 
 type PrettyError = String
 
@@ -266,8 +268,8 @@ parseValidGrammarIO f = do
     let g = parseValidGrammar contents
     case g of
         Left e -> putStrLn e
-        -- Right g' -> print $ pPrint g'
-        Right g' -> print g'
+        Right g' -> print $ pPrint g'
+        -- Right g' -> print g'
 
 {-|
 Parses and prints syntactic patterns from a file.
@@ -279,8 +281,8 @@ parsePatternsIO f = do
     contents <- readFile f
     case parsePatterns contents of
         Left e -> putStrLn (errorBundlePretty e)
-        -- Right g -> print $ pPrint g
-        Right g -> print g
+        Right g -> print $ pPrint g
+        -- Right g -> print g
 
 {-|
 Applies a function to syntactic patterns read from a file and prints the result.
@@ -333,21 +335,48 @@ parseFileIO grammarFile inputFile flat = do
         Left e -> putStrLn e
         Right t -> putStrLn $ if flat then flatten t else show (pPrint t)
 
-parseMultFileIO :: FilePath -> FilePath -> Int -> IO ()
-parseMultFileIO grammarFile inputFiles n = do
+parseMultFileIO :: FilePath -> FilePath -> FilePath -> Int -> IO ()
+parseMultFileIO grammarFile inputFiles output n = do
     contentsG <- readFile grammarFile
     contentsF <- readFile inputFiles
     let files = take n $ lines contentsF
-    mapM_ (parseSingle contentsG) files
+    writeFile ("output/" ++ output ++ "-ok.txt") ""
+    writeFile ("output/" ++ output ++ "-falho.txt") ""
+    mapM_ (parseSingle contentsG output) files
+    putStrLn $ "Terminou " ++ output
 
-parseSingle :: String -> FilePath -> IO ()
-parseSingle grammar input = do
+parseSingle :: String -> FilePath  -> FilePath -> IO ()
+parseSingle grammar output input = do
     contents <- readFile input
     case parseFile grammar contents of
-        Left e -> putStrLn $ input ++ ":\n" ++ e
-        Right t -> do
-            putStrLn $ input ++ ": ok\nResultado em output/teste.txt"
-            writeFile "output/teste.txt" (show $ pPrint t)
+        Left _ ->
+            -- appendFile ("output/" ++ output ++ "-falho.txt") (input ++ ": arquivo inválido\n")
+            appendFile ("output/" ++ output ++ "-falho.txt") (input ++ "\n")
+        Right _ ->
+            -- appendFile ("output/" ++ output ++ "-ok.txt") (input ++ ": ok\n")
+            appendFile ("output/" ++ output ++ "-ok.txt") (input ++ "\n")
+
+-- parseTarefas :: FilePath -> Int -> IO ()
+-- parseTarefas t = parseMultFileIO ("input/peg/"++t++".peg") ("input/entregas-"++t++".txt") t
+parseTarefas :: IO ()
+parseTarefas = do
+    parseMultFileIO "input/peg/tarefa1.peg"  "input/entregas/entregas-tarefa1.txt"  "tarefa1"  5000
+    parseMultFileIO "input/peg/tarefa1.peg"  "input/entregas/entregas-tarefa2.txt"  "tarefa2"  5000
+    parseMultFileIO "input/peg/tarefa3.peg"  "input/entregas/entregas-tarefa3.txt"  "tarefa3"  5000
+    parseMultFileIO "input/peg/tarefa4.peg"  "input/entregas/entregas-tarefa4.txt"  "tarefa4"  5000
+    parseMultFileIO "input/peg/tarefa4.peg"  "input/entregas/entregas-tarefa5.txt"  "tarefa5"  5000
+    parseMultFileIO "input/peg/tarefa6.peg"  "input/entregas/entregas-tarefa6.txt"  "tarefa6"  5000
+    parseMultFileIO "input/peg/tarefa7.peg"  "input/entregas/entregas-tarefa7.txt"  "tarefa7"  5000
+    parseMultFileIO "input/peg/tarefa7.peg"  "input/entregas/entregas-tarefa8.txt"  "tarefa8"  5000
+    parseMultFileIO "input/peg/tarefa7.peg"  "input/entregas/entregas-tarefa9.txt"  "tarefa9"  5000
+    parseMultFileIO "input/peg/tarefa10.peg" "input/entregas/entregas-tarefa10.txt" "tarefa10" 5000
+    parseMultFileIO "input/peg/tarefa10.peg" "input/entregas/entregas-tarefa11.txt" "tarefa11" 5000
+    parseMultFileIO "input/peg/tarefa12.peg" "input/entregas/entregas-tarefa12.txt" "tarefa12" 5000
+    parseMultFileIO "input/peg/tarefa12.peg" "input/entregas/entregas-tarefa13.txt" "tarefa13" 5000
+    parseMultFileIO "input/peg/tarefa12.peg" "input/entregas/entregas-tarefa14.txt" "tarefa14" 5000
+    parseMultFileIO "input/peg/tarefa12.peg" "input/entregas/entregas-tarefa15.txt" "tarefa15" 5000
+    parseMultFileIO "input/peg/tarefa12.peg" "input/entregas/entregas-tarefa16.txt" "tarefa16" 5000
+    -- parseMultFileIO "input/peg/tarefa17.peg" "input/entregas/entregas-tarefa17.txt" "tarefa17" 5000
 
 parseFactorialIO :: FilePath -> FilePath -> FilePath -> String -> Int -> IO ()
 parseFactorialIO grammarFile patternFile inputFiles pat n = do
@@ -456,3 +485,25 @@ parseCallGraphIO grammarFile patternFile inputFile pat1 pat2 = do
     case parseCallGraph contentsG contentsP contentsF pat1 pat2 of
         Left e -> putStrLn e
         Right t -> putStrLn $ concat . nub $ map (\ (x, y) -> flatten x ++ " -> " ++ flatten y ++ "\n") t
+
+testGrammar :: Grammar
+testGrammar = [QPeg.grammar|
+    E <- T ("+" T)*
+    T <- F ("*" F)* 
+    F <- n / "(" E ")"
+    ^n <- [0-9]+
+    |]
+
+testGrammar2 :: Grammar
+testGrammar2 = [QPeg.grammar|
+    S <- "x" S "x" / "x"
+    |]
+
+testPattern :: [NamedSynPat]
+testPattern = [QPattern.patterns|
+    pattern call : function_call := #name:identifier @space "(" @space #v:(expr_list?) ")" ε
+
+    pattern definition : function_def := ("def" @space #name:identifier "(" @space #p:(id_list?) ")" @space ":") #block:(statement*)
+
+    pattern space : space := " "*
+    |]

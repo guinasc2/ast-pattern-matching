@@ -2,7 +2,7 @@
 
 ---
 
-*This project is part of my master's studies and is therefore still experimental 
+*This project is part of my doctorate's studies and is therefore still experimental 
 in nature, intended primarily for educational and research purposes.*
 
 ---
@@ -39,6 +39,10 @@ src/
     Peg.hs           -- PEG grammar parser
   Pipeline/
     MatchPipeline.hs -- High-level pipeline for parsing, matching, and rewriting
+  Quote/
+    Base.hs          -- Quasi-quoter base functions
+    Pattern.hs       -- Pattern quasi-quoter
+    Peg.hs           -- PEG quasi-quotter
   Semantic/
     Pattern.hs       -- Semantic analysis for patterns
     Peg.hs           -- Semantic analysis for PEGs
@@ -102,7 +106,8 @@ Most pipeline functions also have `IO` variants that accept file paths instead o
 strings. These allow you to directly specify files containing PEG grammars, patterns, 
 and input data.  
 You can find several example PEG, pattern, and input files in the `input/` directory 
-to experiment with.
+to experiment with. The file extension for PEG and pattern files are .peg and .pat
+respectively, but they are simple text files.
 
 #### Tests
 
@@ -118,7 +123,11 @@ See the [Haddock documentation](docs/index.html) for detailed API usage and exam
 
 ```bash
 cabal haddock
-# or
+```
+
+or
+
+```bash
 stack haddock
 ```
 
@@ -126,12 +135,3 @@ stack haddock
   - PEG and pattern syntax
   - Pattern matching and rewriting
   - Error handling and semantic checks
-
-## License
-
-MIT © Guilherme Drummond, 2025
-
-## Author
-
-Guilherme Drummond  
-[guiadnguto@gmail.com](mailto:guiadnguto@gmail.com)

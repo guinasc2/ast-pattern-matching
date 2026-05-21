@@ -12,13 +12,14 @@ producing syntax trees ('ParsedTree') as a result.
 -}
 module Parser.ParsedTree (mkParser) where
 
-import Syntax.Base (Terminal(..))
+import Syntax.Base (Terminal(..), NonTerminal(..))
 import Syntax.Peg (Grammar, Expression(..), expression)
 import Syntax.ParsedTree (ParsedTree(..), flatten)
-import Parser.Base (Parser, blank, sc)
-import Text.Megaparsec (notFollowedBy, many, choice, eof, optional, try)
+import Parser.Base (Parser, blank)
+import Text.Megaparsec (notFollowedBy, many, eof, optional, try, (<?>))
 import Text.Megaparsec.Char (string)
 import Data.Maybe (fromJust)
+import Control.Applicative ((<|>))
 import qualified Text.Megaparsec.Char.Lexer as Lexer
 
 
@@ -65,17 +66,15 @@ of PEG expressions ('Expression') and produce the corresponding syntax tree.
 mkParser' :: Grammar -> Expression -> Parser ParsedTree
 mkParser' _ Empty = ParsedEpsilon <$ string ""
 mkParser' _ (ExprT t) = ParsedT <$> terminal t
-mkParser' g (ExprNT nt) = ParsedNT nt <$> mkParser' g (fromJust $ Syntax.Peg.expression g nt)
-mkParser' g (Choice e1 e2) = choice [
-                                try $ ParsedChoiceLeft <$> mkParser' g e1,
-                                ParsedChoiceRight <$> mkParser' g e2
-                            ]
+mkParser' g (ExprNT nt@(NT n)) = ParsedNT nt <$> mkParser' g (fromJust $ Syntax.Peg.expression g nt) <?> n
+mkParser' g (Choice e1 e2) = try (ParsedChoiceLeft <$> mkParser' g e1)
+                             <|> ParsedChoiceRight <$> mkParser' g e2
 mkParser' g (Sequence e1 e2) = ParsedSeq <$> mkParser' g e1 <*> mkParser' g e2
-mkParser' g (Star e) = ParsedStar <$> many (mkParser' g e)
+mkParser' g (Star e) = ParsedStar <$> many (try $ mkParser' g e)
 mkParser' g (Not e) = ParsedNot <$ notFollowedBy (mkParser' g e)
 mkParser' g (Flatten e) = ParsedT . T . flatten <$> mkParser' g e
-mkParser' g (Indent e b) = Lexer.indentBlock sc p
+mkParser' g (Indent e b) = Lexer.indentBlock blank p
     where
         p = do
             expr <- mkParser' g e
-            return $ Lexer.IndentSome Nothing (return . ParsedIndent expr) (mkParser' g b)
+            return $ Lexer.IndentSome Nothing (return . ParsedIndent expr) (try $ mkParser' g b)

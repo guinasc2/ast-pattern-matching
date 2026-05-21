@@ -38,11 +38,15 @@ library
       -- Semantic
       Semantic.Peg
       Semantic.Pattern
-      -- Semantic
+      -- Match
       Match.Capture
       Match.Rewrite
       -- Pipeline
       Pipeline.MatchPipeline
+      -- Quote
+      Quote.Base
+      Quote.Peg
+      Quote.Pattern
   other-modules:
       Paths_syntax_pattern
   autogen-modules:
@@ -60,12 +64,15 @@ library
     , containers
     , pretty
     , syb
+    , template-haskell
   default-language: Haskell2010
   default-extensions: 
       TupleSections
     , InstanceSigs
     , FlexibleInstances
     , DeriveDataTypeable
+    , TemplateHaskell
+    , QuasiQuotes
 
 executable syntax-pattern-exe
   main-is: Main.hs

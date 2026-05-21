@@ -72,12 +72,13 @@ type ParsedTreeZipper = (ParsedTree, ParsedTreePath)
 
 goUp :: ParsedTreeZipper -> Maybe ParsedTreeZipper
 goUp (t, ParsedNTCrumb nt:z)                 = Just (ParsedNT nt t, z)
-goUp (t1, ParsedSeqFirst t2:z)               = Just (ParsedSeq t1 t2, z)
-goUp (t2, ParsedSeqSecond t1:z)              = Just (ParsedSeq t1 t2, z)
+goUp (t, ParsedSeqFirst t':z)                = Just (ParsedSeq t t', z)
+goUp (t, ParsedSeqSecond t':z)               = Just (ParsedSeq t' t, z)
 goUp (t, ParsedChoiceLeftCrumb:z)            = Just (ParsedChoiceLeft t, z)
 goUp (t, ParsedChoiceRightCrumb:z)           = Just (ParsedChoiceRight t, z)
-goUp (t, (ParsedStarCrumb ts []):z)          = Just (ParsedStar (t:ts), z)
-goUp z@(_, (ParsedStarCrumb _ _):_)          = goUp =<< goLeft z
+-- goUp (t, (ParsedStarCrumb ts []):z)          = Just (ParsedStar (t:ts), z)
+-- goUp z@(_, (ParsedStarCrumb _ _):_)          = goUp =<< goLeft z
+goUp (t, ParsedStarCrumb ts1 ts2:z)          = Just (ParsedStar (t : reverse ts2 ++ ts1), z)
 goUp (t, ParsedIndentFirst ts:z)             = Just (ParsedIndent t ts, z)
 goUp (ParsedStar ts, ParsedIndentSecond t:z) = Just (ParsedIndent t ts, z)
 goUp (_, ParsedIndentSecond _:_)             = Nothing
@@ -95,32 +96,32 @@ goDown (ParsedStar (t:ts), z)   = Just (t, ParsedStarCrumb ts []:z)
 goDown _                        = Nothing
 
 goLeft :: ParsedTreeZipper -> Maybe ParsedTreeZipper
-goLeft (_, (ParsedStarCrumb _ []):_)             = Nothing
-goLeft (t, (ParsedStarCrumb ts (t':ts2)):z)      = Just (t', ParsedStarCrumb (t:ts) ts2:z)
-goLeft (ParsedSeq t1 t2, z)                      = Just (t1, ParsedSeqFirst t2:z)
-goLeft (ParsedIndent t ts, z)                    = Just (t, ParsedIndentFirst ts:z)
-goLeft _                                         = Nothing
+goLeft (_, (ParsedStarCrumb _ []):_)         = Nothing
+goLeft (t, (ParsedStarCrumb ts1 (t':ts2)):z) = Just (t', ParsedStarCrumb (t:ts1) ts2:z)
+goLeft (ParsedSeq t1 t2, z)                  = Just (t1, ParsedSeqFirst t2:z)
+goLeft (ParsedIndent t ts, z)                = Just (t, ParsedIndentFirst ts:z)
+goLeft _                                     = Nothing
 
 goRight :: ParsedTreeZipper -> Maybe ParsedTreeZipper
-goRight (_, (ParsedStarCrumb [] _):_)             = Nothing
-goRight (t, (ParsedStarCrumb (t':ts1) ts):z)      = Just (t', ParsedStarCrumb ts1 (t:ts):z)
-goRight (ParsedSeq t1 t2, z)                      = Just (t2, ParsedSeqSecond t1:z)
-goRight (ParsedIndent t ts, z)                    = Just (ParsedStar ts, ParsedIndentSecond t:z)
-goRight _                                         = Nothing
+goRight (_, (ParsedStarCrumb [] _):_)         = Nothing
+goRight (t, (ParsedStarCrumb (t':ts1) ts2):z) = Just (t', ParsedStarCrumb ts1 (t:ts2):z)
+goRight (ParsedSeq t1 t2, z)                  = Just (t2, ParsedSeqSecond t1:z)
+goRight (ParsedIndent t ts, z)                = Just (ParsedStar ts, ParsedIndentSecond t:z)
+goRight _                                     = Nothing
 
 pullFromRight :: ParsedTree -> Maybe ParsedTree
-pullFromRight (ParsedSeq e1 e2) = maybe (Just e1') (Just . ParsedSeq e1') eT
+pullFromRight (ParsedSeq t1 t2) = maybe (Just t1') (Just . ParsedSeq t1') tT
     where
-        (eH, eT) = getHead e2
-        e1' = addAtEnd e1 eH
+        (tH, tT) = getHead t2
+        t1' = addAtEnd t1 tH
 pullFromRight _ = Nothing
 
 addAtEnd :: ParsedTree -> ParsedTree -> ParsedTree
-addAtEnd (ParsedSeq e1 e2) e3 = ParsedSeq e1 $ addAtEnd e2 e3
+addAtEnd (ParsedSeq t1 t2) e3 = ParsedSeq t1 $ addAtEnd t2 e3
 addAtEnd e e3 = ParsedSeq e e3
 
 getHead :: ParsedTree -> (ParsedTree, Maybe ParsedTree)
-getHead (ParsedSeq e1 e2) = (e1, Just e2)
+getHead (ParsedSeq t1 t2) = (t1, Just t2)
 getHead e                = (e, Nothing)
 
 {-|

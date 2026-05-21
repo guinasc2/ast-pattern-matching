@@ -303,7 +303,7 @@ or
 stack haddock
 ```
 
-- The documentation covers:
-  - PEG and pattern syntax
-  - Pattern matching and rewriting
-  - Error handling and semantic checks
+The documentation covers:
+- PEG and pattern syntax
+- Pattern matching and rewriting
+- Error handling and semantic checks

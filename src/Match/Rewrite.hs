@@ -36,6 +36,9 @@ replace (PatNT nt p)     (ParsedNT nt' t) subst = if nt == nt'
                                                     then ParsedNT nt' (replace p t subst)
                                                     else ParsedNT nt' t
 replace (PatSeq p1 p2)   (ParsedSeq t1 t2)     subst = ParsedSeq (replace p1 t1 subst) (replace p2 t2 subst)
+-- TODO: The following line was added to try and fix a problem of duplicating the 
+-- contents of a variable during rewriting. As such, it may not be fully correct
+replace (PatSeq p1 p2@(PatVar _ _)) (ParsedIndent t1 t2)  subst = ParsedIndent (replace p1 t1 subst) [replace p2 (ParsedStar t2) subst]
 replace (PatSeq p1 p2)   (ParsedIndent t1 t2)  subst = ParsedIndent (replace p1 t1 subst) $ map (\ x -> replace p2 x subst) t2
 replace (PatChoice p1 _) (ParsedChoiceLeft t)  subst = ParsedChoiceLeft $ replace p1 t subst
 replace (PatChoice _ p2) (ParsedChoiceRight t) subst = ParsedChoiceRight $ replace p2 t subst

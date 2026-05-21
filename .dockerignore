@@ -1,0 +1,26 @@
+# Haskell build artifacts
+.stack-work/
+dist-newstyle/
+dist/
+**/*.hi
+**/*.o
+**/*.dyn_hi
+**/*.dyn_o
+
+# Git and configuration
+.git/
+.gitignore
+cabal.project.local
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Documentation and meta
+README.md
+CHANGELOG.md
+
+# Editor temporary files
+*.swp
+*.swo
+*~

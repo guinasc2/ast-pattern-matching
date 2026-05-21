@@ -1,0 +1,18 @@
+services:
+  ghci:
+    build: .
+    stdin_open: true
+    tty: true
+
+    volumes:
+      - .:/workspace
+
+      # cabal cache
+      - cabal-store:/root/.cabal
+      - ghc-store:/root/.ghc
+
+    working_dir: /workspace
+
+volumes:
+  cabal-store:
+  ghc-store:

@@ -1,12 +1,5 @@
 # syntax-pattern
 
----
-
-*This project is part of my doctorate's studies and is therefore still experimental 
-in nature, intended primarily for educational and research purposes.*
-
----
-
 **syntax-pattern** is a Haskell library for parsing, analyzing, matching, and 
 rewriting syntax trees using Parsing Expression Grammars (PEGs) and user-defined 
 patterns. It is designed for research and experimentation with syntax-driven 
